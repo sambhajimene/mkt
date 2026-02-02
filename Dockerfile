@@ -9,7 +9,7 @@ COPY . /app
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Expose Flask port
-EXPOSE 5010
+EXPOSE 5009
 
 # Run the script
 CMD ["python", "pro_option_alert_200symbols.py"]
