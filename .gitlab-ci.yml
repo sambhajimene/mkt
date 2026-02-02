@@ -1,41 +1,33 @@
 stages:
-  - build
-  - push
+  - build_and_push
   - deploy
 
 variables:
-  DOCKER_TLS_CERTDIR: ""
-  IMAGE_NAME: "$QUAY_REPO:latest"
+  IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+  IMAGE_NAME: quay.io/sambhajimene/mk
+  FULL_IMAGE: quay.io/sambhajimene/mk:$CI_COMMIT_SHORT_SHA
+  OPENSHIFT_PROJECT: sambhajimene-dev
 
-# ---------------- BUILD ----------------
-build:
-  stage: build
-  image: docker:latest
-  services:
-    - docker:dind
+# =====================
+# BUILD & PUSH
+# =====================
+build_and_push:
+  stage: build_and_push
+  image: quay.io/buildah/stable:latest
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - "**/*.py"
+        - Dockerfile
+        - requirements.txt
+    - when: never
   script:
-    - echo "🔐 Login to Quay"
-    - echo "$QUAY_PASSWORD" | docker login -u "$QUAY_USER" --password-stdin quay.io
-
-    - echo "🏗️ Building Docker image"
-    - docker build -t $IMAGE_NAME .
-  only:
-    - main
-
-# ---------------- PUSH ----------------
-push:
-  stage: push
-  image: docker:latest
-  services:
-    - docker:dind
-  script:
-    - echo "🔐 Login to Quay"
-    - echo "$QUAY_PASSWORD" | docker login -u "$QUAY_USER" --password-stdin quay.io
-
-    - echo "📤 Pushing image to Quay"
-    - docker push $IMAGE_NAME
-  only:
-    - main
+    - echo "Building image $FULL_IMAGE"
+    - buildah bud -t $FULL_IMAGE .
+    - echo "Logging in to Quay.io"
+    - buildah login -u $QUAY_USER -p $QUAY_PASSWORD quay.io
+    - echo "Pushing image $FULL_IMAGE to Quay.io"
+    - buildah push $FULL_IMAGE docker://$FULL_IMAGE
 
 # ---------------- DEPLOY ----------------
 deploy:
@@ -48,7 +40,7 @@ deploy:
     - echo "📦 Select project"
     - oc project "$OPENSHIFT_PROJECT"
 
-    - echo "🚀 Deploying application"
+    - echo "🚀 Deploying / Updating app"
     - |
       oc get deployment mk >/dev/null 2>&1 || \
       oc create deployment mk --image=$IMAGE_NAME
@@ -57,3 +49,4 @@ deploy:
     - oc rollout status deployment/mk
   only:
     - main
+
