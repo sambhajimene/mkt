@@ -3,13 +3,12 @@ stages:
   - deploy
 
 variables:
-  IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+  IMAGE_TAG: latest
   IMAGE_NAME: quay.io/sambhajimene/mk
-  FULL_IMAGE: quay.io/sambhajimene/mk:$CI_COMMIT_SHORT_SHA
-
+  FULL_IMAGE: $IMAGE_NAME:$IMAGE_TAG
   OPENSHIFT_PROJECT: sambhajimene-dev
   APP_NAME: mk
-  APP_PORT: "5010"
+  APP_PORT: 5010
 
 # =====================
 # BUILD & PUSH
@@ -25,11 +24,11 @@ build_and_push:
         - requirements.txt
     - when: never
   script:
-    - echo "📦 Building image $FULL_IMAGE"
+    - echo "Building image $FULL_IMAGE"
     - buildah bud -t $FULL_IMAGE .
-    - echo "🔐 Login to Quay"
-    - buildah login -u "$QUAY_USER" -p "$QUAY_PASSWORD" quay.io
-    - echo "📤 Pushing image"
+    - echo "Logging in to Quay.io"
+    - buildah login -u $QUAY_USER -p $QUAY_PASSWORD quay.io
+    - echo "Pushing image $FULL_IMAGE to Quay.io"
     - buildah push $FULL_IMAGE docker://$FULL_IMAGE
 
 # =====================
@@ -48,37 +47,29 @@ deploy:
     # ---------------------
     # DEPLOYMENT
     # ---------------------
-    - echo "🚀 Deploy application"
-    - oc get deploy $APP_NAME || oc create deployment $APP_NAME --image=$FULL_IMAGE
+    - echo "🚀 Deploy / Update $APP_NAME"
+    - oc get deploy $APP_NAME >/dev/null 2>&1 || oc create deployment $APP_NAME --image=$FULL_IMAGE
     - oc set image deploy/$APP_NAME $APP_NAME=$FULL_IMAGE
-    - oc rollout status deploy/$APP_NAME
+    - oc rollout status deploy/$APP_NAME --timeout=180s
 
     # ---------------------
-    # SERVICE (EXPLICIT)
+    # SERVICE
     # ---------------------
-    - echo "🔌 Ensure Service"
-    - |
-      oc get svc $APP_NAME || \
-      oc create service clusterip $APP_NAME \
-        --tcp=$APP_PORT:$APP_PORT
+    - echo "🔌 Create Service if missing"
+    - oc get svc $APP_NAME >/dev/null 2>&1 || oc create service clusterip $APP_NAME --tcp=$APP_PORT:$APP_PORT
 
     # ---------------------
-    # ROUTE (EXPLICIT)
+    # ROUTE
     # ---------------------
-    - echo "🌐 Ensure Route"
-    - |
-      oc get route $APP_NAME || \
-      oc create route edge $APP_NAME \
-        --service=$APP_NAME \
-        --port=$APP_PORT
+    - echo "🌐 Create Route if missing"
+    - oc get route $APP_NAME >/dev/null 2>&1 || oc expose svc $APP_NAME --port=$APP_PORT
 
     # ---------------------
-    # OUTPUT
+    # DISPLAY OUTPUT
     # ---------------------
     - echo "✅ Deployment completed"
     - echo "🌍 Application URL:"
-    - oc get route $APP_NAME -o jsonpath='{.spec.host}'
+    - oc get route $APP_NAME -o jsonpath='http://{.spec.host}'
     - echo ""
-
   only:
     - main
