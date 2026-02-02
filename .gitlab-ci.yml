@@ -8,7 +8,7 @@ variables:
   FULL_IMAGE: $IMAGE_NAME:$IMAGE_TAG
   OPENSHIFT_PROJECT: sambhajimene-dev
   APP_NAME: mk
-  APP_PORT: 5010
+  APP_PORT: 5009
 
 # =====================
 # BUILD & PUSH
