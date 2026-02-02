@@ -6,9 +6,10 @@ variables:
   IMAGE_TAG: $CI_COMMIT_SHORT_SHA
   IMAGE_NAME: quay.io/sambhajimene/mk
   FULL_IMAGE: quay.io/sambhajimene/mk:$CI_COMMIT_SHORT_SHA
+
   OPENSHIFT_PROJECT: sambhajimene-dev
   APP_NAME: mk
-  APP_PORT: 5010
+  APP_PORT: "5010"
 
 # =====================
 # BUILD & PUSH
@@ -24,11 +25,11 @@ build_and_push:
         - requirements.txt
     - when: never
   script:
-    - echo "🔨 Building image $FULL_IMAGE"
+    - echo "📦 Building image $FULL_IMAGE"
     - buildah bud -t $FULL_IMAGE .
-    - echo "🔐 Logging in to Quay.io"
-    - buildah login -u $QUAY_USER -p $QUAY_PASSWORD quay.io
-    - echo "📤 Pushing image $FULL_IMAGE to Quay.io"
+    - echo "🔐 Login to Quay"
+    - buildah login -u "$QUAY_USER" -p "$QUAY_PASSWORD" quay.io
+    - echo "📤 Pushing image"
     - buildah push $FULL_IMAGE docker://$FULL_IMAGE
 
 # =====================
@@ -38,9 +39,6 @@ deploy:
   stage: deploy
   image: quay.io/openshift/origin-cli:latest
   script:
-    # ---------------------
-    # LOGIN
-    # ---------------------
     - echo "🔐 Login to OpenShift"
     - oc login "$OPENSHIFT_SERVER" --token="$OPENSHIFT_TOKEN" --insecure-skip-tls-verify=true
 
@@ -50,37 +48,37 @@ deploy:
     # ---------------------
     # DEPLOYMENT
     # ---------------------
-    - echo "🚀 Creating deployment if missing"
+    - echo "🚀 Deploy application"
     - oc get deploy $APP_NAME || oc create deployment $APP_NAME --image=$FULL_IMAGE
-
-    - echo "♻️ Updating image (triggers rollout)"
     - oc set image deploy/$APP_NAME $APP_NAME=$FULL_IMAGE
-
-    - echo "⏳ Waiting for rollout to complete"
-    - oc rollout status deploy/$APP_NAME --timeout=180s
+    - oc rollout status deploy/$APP_NAME
 
     # ---------------------
-    # SERVICE
+    # SERVICE (EXPLICIT)
     # ---------------------
-    - echo "🔌 Creating Service (if not exists)"
+    - echo "🔌 Ensure Service"
     - |
-      oc get svc $APP_NAME >/dev/null 2>&1 || \
-      oc create service clusterip $APP_NAME --tcp=$APP_PORT:$APP_PORT
+      oc get svc $APP_NAME || \
+      oc create service clusterip $APP_NAME \
+        --tcp=$APP_PORT:$APP_PORT
 
     # ---------------------
-    # ROUTE
+    # ROUTE (EXPLICIT)
     # ---------------------
-    - echo "🌐 Creating Route (if not exists)"
+    - echo "🌐 Ensure Route"
     - |
-      oc get route $APP_NAME >/dev/null 2>&1 || \
-      oc create route edge $APP_NAME --service=$APP_NAME --port=$APP_PORT
+      oc get route $APP_NAME || \
+      oc create route edge $APP_NAME \
+        --service=$APP_NAME \
+        --port=$APP_PORT
 
     # ---------------------
     # OUTPUT
     # ---------------------
-    - echo "✅ Deployment & Rollout completed"
+    - echo "✅ Deployment completed"
     - echo "🌍 Application URL:"
-    - oc get route $APP_NAME -o jsonpath='http://{.spec.host}'
+    - oc get route $APP_NAME -o jsonpath='{.spec.host}'
     - echo ""
+
   only:
     - main
