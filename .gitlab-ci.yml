@@ -31,7 +31,7 @@ build_and_push:
     - echo "📦 Pushing image $FULL_IMAGE to Quay.io"
     - buildah push $FULL_IMAGE docker://$FULL_IMAGE
 
-# =====================
+#=====================
 # DEPLOY
 # =====================
 deploy:
