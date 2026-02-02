@@ -50,6 +50,7 @@ deploy:
     - echo "🚀 Deploy / Update $APP_NAME"
     - oc get deploy $APP_NAME >/dev/null 2>&1 || oc create deployment $APP_NAME --image=$FULL_IMAGE
     - oc set image deploy/$APP_NAME $APP_NAME=$FULL_IMAGE
+    - oc rollout restart deploy/$APP_NAME
     - echo "⏳ Rolling out deployment"
     - oc rollout status deploy/$APP_NAME --timeout=180s
 
