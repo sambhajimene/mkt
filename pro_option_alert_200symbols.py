@@ -213,7 +213,7 @@ def dashboard():
     return render_template_string(TEMPLATE,last_update=datetime.now().strftime("%H:%M:%S"),dashboard_data=dashboard_data)
 
 def run_flask():
-    app.run(host="0.0.0.0",port=5000)
+    app.run(host="0.0.0.0",port=5010)
 
 # ====================== MASTER ENGINE ======================
 def run_engine():

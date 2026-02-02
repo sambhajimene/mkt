@@ -48,30 +48,27 @@ deploy:
     - oc set image deployment/mk mk=$IMAGE_NAME
     - oc rollout status deployment/mk
 
-       # ---------------------
-    # SERVICE (EXPLICIT)
     # ---------------------
-    - echo "🔌 Creating Service"
+    # SERVICE
+    # ---------------------
+    - echo "🔌 Creating Service (if not exists)"
     - |
       oc get svc $APP_NAME >/dev/null 2>&1 || \
-      oc create service clusterip $APP_NAME \
-        --tcp=$APP_PORT:$APP_PORT
+      oc create service clusterip $APP_NAME --tcp=$APP_PORT:$APP_PORT
 
     # ---------------------
-    # ROUTE (EXPLICIT)
+    # ROUTE
     # ---------------------
-    - echo "🌐 Creating Route"
+    - echo "🌐 Creating Route (if not exists)"
     - |
       oc get route $APP_NAME >/dev/null 2>&1 || \
-      oc create route edge $APP_NAME \
-        --service=$APP_NAME \
-        --port=$APP_PORT
+      oc expose svc $APP_NAME --port=$APP_PORT
 
     # ---------------------
     # DISPLAY OUTPUT
     # ---------------------
-    - echo "✅ Deployment successful"
-    - echo "🌐 Application URL:"
+    - echo "✅ Deployment completed"
+    - echo "🌍 Application URL:"
     - oc get route $APP_NAME -o jsonpath='http://{.spec.host}'
     - echo ""
   only:
