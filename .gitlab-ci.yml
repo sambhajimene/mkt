@@ -50,3 +50,27 @@ deploy:
   only:
     - main
 
+    # ---------------------
+    # SERVICE
+    # ---------------------
+    - echo "🔌 Creating service (if not exists)"
+    - |
+      oc get svc $APP_NAME >/dev/null 2>&1 || \
+      oc expose deployment $APP_NAME --port=$APP_PORT --name=$APP_NAME
+
+    # ---------------------
+    # ROUTE
+    # ---------------------
+    - echo "🌐 Creating route (if not exists)"
+    - |
+      oc get route $APP_NAME >/dev/null 2>&1 || \
+      oc expose svc $APP_NAME
+
+    # ---------------------
+    # DISPLAY OUTPUT
+    # ---------------------
+    - echo "✅ Deployment successful"
+    - echo "🌐 Application URL:"
+    - oc get route $APP_NAME -o jsonpath='http://{.spec.host}'
+    - echo ""
+
