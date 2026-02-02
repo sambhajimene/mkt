@@ -1,148 +1,163 @@
 import os
 import time
+import pytz
 import smtplib
+import yfinance as yf
+import pandas as pd
+from datetime import datetime, time as dtime
 from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from flask import Flask, render_template_string
-from datetime import datetime
+from ta.momentum import RSIIndicator
+from ta.trend import MACD
 
-# ======================
-# ENV CONFIG (FROM OPENSHIFT SECRET)
-# ======================
+# ================= TIME CONFIG =================
+IST = pytz.timezone("Asia/Kolkata")
+
+def market_is_open():
+    now = datetime.now(IST).time()
+    return dtime(9, 15) <= now <= dtime(15, 30)
+
+# ================= EMAIL CONFIG =================
 EMAIL_FROM = os.getenv("EMAIL_FROM")
 EMAIL_PASS = os.getenv("EMAIL_PASS")
 EMAIL_TO   = os.getenv("EMAIL_TO")
 
-CHECK_INTERVAL = 15 * 60  # 15 minutes
-
-# ======================
-# FLASK APP
-# ======================
-app = Flask(__name__)
-
-# Store alerts in memory (PVC not used)
-ALERTS = []
-
-# ======================
-# EMAIL FUNCTION
-# ======================
 def send_email(subject, body):
-    msg = MIMEMultipart()
+    if not market_is_open():
+        return
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
     msg["From"] = EMAIL_FROM
     msg["To"] = EMAIL_TO
-    msg["Subject"] = subject
-
-    msg.attach(MIMEText(body, "html"))
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(EMAIL_FROM, EMAIL_PASS)
         server.send_message(msg)
 
-# ======================
-# MOCK OPTION DATA (REPLACE WITH NSE LIVE DATA)
-# ======================
-def fetch_option_data():
-    """
-    Replace this with NSE live fetch logic.
-    """
-    return {
-        "symbol": "NIFTY",
-        "atm": 22500,
-        "alerts": [
-            {"strike": 22550, "type": "CALL"},
-            {"strike": 22450, "type": "PUT"}
-        ]
-    }
+# ================= SYMBOL LIST =================
+SYMBOLS = ["^NSEI", "^NSEBANK"]  # expand later safely
 
-# ======================
-# ALERT ENGINE (15 MIN)
-# ======================
-def check_alerts():
-    data = fetch_option_data()
+# ================= STRATEGY CORE =================
+def check_signal(symbol):
+    if not market_is_open():
+        return None
 
-    if not data["alerts"]:
-        return
+    df = yf.download(symbol, interval="15m", period="5d", progress=False)
+    if df.empty or len(df) < 50:
+        return None
 
-    for alert in data["alerts"]:
-        record = {
-            "time": datetime.now().strftime("%H:%M:%S"),
-            "symbol": data["symbol"],
-            "atm": data["atm"],
-            "strike": alert["strike"],
-            "side": alert["type"]
+    close = df["Close"]
+
+    # RSI
+    rsi = RSIIndicator(close, window=14).rsi()
+
+    # MACD (15m)
+    macd = MACD(close)
+    macd_hist = macd.macd_diff()
+
+    # Hourly MACD
+    df_h = yf.download(symbol, interval="60m", period="10d", progress=False)
+    macd_h = MACD(df_h["Close"]).macd_diff()
+
+    # Daily MACD
+    df_d = yf.download(symbol, interval="1d", period="3mo", progress=False)
+    macd_d = MACD(df_d["Close"]).macd_diff()
+
+    # Latest values
+    rsi_prev, rsi_now = rsi.iloc[-2], rsi.iloc[-1]
+
+    # CALL BUY CONDITION
+    if (
+        rsi_prev < 60 and rsi_now > 60 and
+        macd_hist.iloc[-1] > 0 and
+        macd_h.iloc[-1] > 0 and
+        macd_d.iloc[-1] > 0
+    ):
+        return {
+            "symbol": symbol,
+            "side": "CALL BUY",
+            "time": datetime.now(IST).strftime("%H:%M:%S"),
+            "rsi": round(rsi_now, 2)
         }
 
-        ALERTS.append(record)
+    # PUT BUY CONDITION
+    if (
+        rsi_prev > 40 and rsi_now < 40 and
+        macd_hist.iloc[-1] < 0 and
+        macd_h.iloc[-1] < 0 and
+        macd_d.iloc[-1] < 0
+    ):
+        return {
+            "symbol": symbol,
+            "side": "PUT BUY",
+            "time": datetime.now(IST).strftime("%H:%M:%S"),
+            "rsi": round(rsi_now, 2)
+        }
 
-        subject = f"🚨 {record['symbol']} {record['side']} Alert"
-        body = f"""
-        <h3>{record['symbol']} Option Alert</h3>
-        <p><b>ATM:</b> {record['atm']}</p>
-        <p><b>Strike:</b> {record['strike']}</p>
-        <p><b>Side:</b> {record['side']}</p>
-        <p><b>Time:</b> {record['time']}</p>
-        """
+    return None
 
-        send_email(subject, body)
+# ================= RUN LOOP =================
+alerts = []
 
-# ======================
-# BACKGROUND LOOP
-# ======================
-def alert_loop():
+def run_engine():
     while True:
-        try:
-            check_alerts()
-        except Exception as e:
-            print("Alert error:", e)
+        if not market_is_open():
+            print("🔒 Market CLOSED — engine idle")
+            time.sleep(300)
+            continue
 
-        time.sleep(CHECK_INTERVAL)
+        for sym in SYMBOLS:
+            signal = check_signal(sym)
+            if signal:
+                alerts.append(signal)
 
-# ======================
-# DASHBOARD (ONLY ALERTS)
-# ======================
+                mail_body = f"""
+🟢 AUTO TRADE SIGNAL CONFIRMED
+
+Symbol : {signal['symbol']}
+Action : {signal['side']}
+RSI    : {signal['rsi']}
+Time   : {signal['time']}
+
+All filters matched:
+✔ RSI
+✔ 15m candle
+✔ Hourly MACD
+✔ Daily MACD
+✔ Market Open
+"""
+                send_email(
+                    f"🟢 {signal['side']} | {signal['symbol']}",
+                    mail_body
+                )
+
+        time.sleep(900)  # 15 min
+
+# ================= DASHBOARD =================
+app = Flask(__name__)
+
+HTML = """
+<h2>Live Confirmed Option Alerts (15-Min)</h2>
+<table border=1 cellpadding=6>
+<tr><th>Time</th><th>Symbol</th><th>Action</th><th>RSI</th></tr>
+{% for a in alerts %}
+<tr>
+<td>{{a.time}}</td>
+<td>{{a.symbol}}</td>
+<td><b>{{a.side}}</b></td>
+<td>{{a.rsi}}</td>
+</tr>
+{% endfor %}
+</table>
+"""
+
 @app.route("/")
-def dashboard():
-    html = """
-    <html>
-    <head>
-        <title>Option Alerts Dashboard</title>
-        <style>
-            body { font-family: Arial; background:#111; color:#fff; }
-            table { width:100%; border-collapse: collapse; }
-            th, td { padding:10px; border-bottom:1px solid #333; text-align:center; }
-            .call { background:#0033cc; }
-            .put  { background:#990000; }
-        </style>
-    </head>
-    <body>
-        <h2>🚨 Live Option Alerts (15-Min Candle)</h2>
-        <table>
-            <tr>
-                <th>Time</th>
-                <th>Symbol</th>
-                <th>ATM</th>
-                <th>Strike</th>
-                <th>Side</th>
-            </tr>
-            {% for a in alerts %}
-            <tr class="{{ 'call' if a.side == 'CALL' else 'put' }}">
-                <td>{{a.time}}</td>
-                <td>{{a.symbol}}</td>
-                <td>{{a.atm}}</td>
-                <td>{{a.strike}}</td>
-                <td>{{a.side}}</td>
-            </tr>
-            {% endfor %}
-        </table>
-    </body>
-    </html>
-    """
-    return render_template_string(html, alerts=ALERTS)
+def index():
+    return render_template_string(HTML, alerts=alerts[-20:])
 
-# ======================
-# START
-# ======================
+# ================= START =================
 if __name__ == "__main__":
     import threading
-    threading.Thread(target=alert_loop, daemon=True).start()
+    threading.Thread(target=run_engine, daemon=True).start()
     app.run(host="0.0.0.0", port=5009)
