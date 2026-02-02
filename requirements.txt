@@ -1,4 +1,5 @@
 nsepython
-Flask
+flask
+pandas
 schedule
-
+yfinance
