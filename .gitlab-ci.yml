@@ -10,7 +10,7 @@ variables:
   APP_NAME: mk
   APP_PORT: 5009
 
-# #=====================
+# =====================
 # BUILD & PUSH
 # =====================
 build_and_push:
