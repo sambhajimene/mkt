@@ -50,9 +50,19 @@ deploy:
     - echo "🚀 Deploy / Update $APP_NAME"
     - oc get deploy $APP_NAME >/dev/null 2>&1 || oc create deployment $APP_NAME --image=$FULL_IMAGE
     - oc set image deploy/$APP_NAME $APP_NAME=$FULL_IMAGE
+
+    # ---- Create / Update Secret (SAFE, repeatable)
+    - |
+      oc delete secret email-secret --ignore-not-found
+      oc create secret generic email-secret \
+        --from-literal=EMAIL_FROM="$EMAIL_FROM" \
+        --from-literal=EMAIL_PASS="$EMAIL_PASS" \
+        --from-literal=EMAIL_TO="$EMAIL_TO"
+
+    # ---- Inject env vars from secret
+    - oc set env deploy/$APP_NAME --from=secret/email-secret
     - oc rollout restart deploy/$APP_NAME
-    - echo "⏳ Rolling out deployment"
-    - oc rollout status deploy/$APP_NAME --timeout=180s
+    - oc rollout status deploy/$APP_NAME
 
     # ---------------------
     # SERVICE
