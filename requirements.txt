@@ -1,5 +1,6 @@
-nsepython
 flask
 pandas
-schedule
+numpy
 yfinance
+ta
+pytz
