@@ -1,0 +1,46 @@
+stages:
+  - build
+  - push
+  - deploy
+
+variables:
+  IMAGE_NAME: $QUAY_REPO:latest   # QUAY_REPO = quay.io/sambhajimene_samsang/pro-option-alert
+
+# ------------------- BUILD -------------------
+build_image:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - echo $QUAY_PASSWORD | docker login -u $QUAY_USER --password-stdin quay.io
+  script:
+    - docker build -t $IMAGE_NAME .
+  only:
+    - main
+
+# ------------------- PUSH -------------------
+push_image:
+  stage: push
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - echo $QUAY_PASSWORD | docker login -u $QUAY_USER --password-stdin quay.io
+  script:
+    - docker push $IMAGE_NAME
+  only:
+    - main
+
+# ------------------- DEPLOY -------------------
+deploy_openshift:
+  stage: deploy
+  image: quay.io/openshift/origin-cli:latest
+  script:
+    - oc login $OPENSHIFT_SERVER --token=$OPENSHIFT_TOKEN
+    - oc project $OPENSHIFT_PROJECT
+    - oc set image deployment/pro-option-alert pro-option-alert=$IMAGE_NAME
+    - oc rollout status deployment/pro-option-alert
+  only:
+    - main
+
