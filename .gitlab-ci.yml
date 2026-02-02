@@ -4,43 +4,56 @@ stages:
   - deploy
 
 variables:
-  IMAGE_NAME: $QUAY_REPO:latest   # QUAY_REPO = quay.io/sambhajimene_samsang/pro-option-alert
+  DOCKER_TLS_CERTDIR: ""
+  IMAGE_NAME: "$QUAY_REPO:latest"
 
-# ------------------- BUILD -------------------
-build_image:
+# ---------------- BUILD ----------------
+build:
   stage: build
   image: docker:latest
   services:
     - docker:dind
-  before_script:
-    - echo $QUAY_PASSWORD | docker login -u $QUAY_USER --password-stdin quay.io
   script:
+    - echo "🔐 Login to Quay"
+    - echo "$QUAY_PASSWORD" | docker login -u "$QUAY_USER" --password-stdin quay.io
+
+    - echo "🏗️ Building Docker image"
     - docker build -t $IMAGE_NAME .
   only:
     - main
 
-# ------------------- PUSH -------------------
-push_image:
+# ---------------- PUSH ----------------
+push:
   stage: push
   image: docker:latest
   services:
     - docker:dind
-  before_script:
-    - echo $QUAY_PASSWORD | docker login -u $QUAY_USER --password-stdin quay.io
   script:
+    - echo "🔐 Login to Quay"
+    - echo "$QUAY_PASSWORD" | docker login -u "$QUAY_USER" --password-stdin quay.io
+
+    - echo "📤 Pushing image to Quay"
     - docker push $IMAGE_NAME
   only:
     - main
 
-# ------------------- DEPLOY -------------------
-deploy_openshift:
+# ---------------- DEPLOY ----------------
+deploy:
   stage: deploy
   image: quay.io/openshift/origin-cli:latest
   script:
-    - oc login $OPENSHIFT_SERVER --token=$OPENSHIFT_TOKEN
-    - oc project $OPENSHIFT_PROJECT
-    - oc set image deployment/pro-option-alert pro-option-alert=$IMAGE_NAME
-    - oc rollout status deployment/pro-option-alert
+    - echo "🔐 Login to OpenShift"
+    - oc login "$OPENSHIFT_SERVER" --token="$OPENSHIFT_TOKEN" --insecure-skip-tls-verify=true
+
+    - echo "📦 Select project"
+    - oc project "$OPENSHIFT_PROJECT"
+
+    - echo "🚀 Deploying application"
+    - |
+      oc get deployment mk >/dev/null 2>&1 || \
+      oc create deployment mk --image=$IMAGE_NAME
+
+    - oc set image deployment/mk mk=$IMAGE_NAME
+    - oc rollout status deployment/mk
   only:
     - main
-
