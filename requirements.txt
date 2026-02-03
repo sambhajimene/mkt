@@ -2,3 +2,10 @@ nsepython
 flask
 schedule
 yfinance
+flask
+pandas
+numpy
+pytz
+requests
+pandas-ta
+nsepython
