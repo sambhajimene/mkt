@@ -22,7 +22,7 @@ CHECK_INTERVAL = 60        # seconds
 CANDLE_TIMEFRAME = "15m"
 
 # ================== SYMBOL LIST (200+) ==================
-SSYMBOLS = [
+SYMBOLS = [
     # =====================
     # INDEX OPTIONS
     # =====================
