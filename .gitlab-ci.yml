@@ -85,5 +85,3 @@ deploy:
     - echo ""
   only:
     - main
-default:
-  interruptible: true
