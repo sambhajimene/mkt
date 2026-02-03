@@ -54,14 +54,26 @@ def get_atm(symbol):
     quote = nse_get_index_quote(symbol)
     return round(quote["last"] / 50) * 50
 
-def rsi_macd_ok(df, side):
-    rsi = ta.rsi(df["close"], length=14).iloc[-1]
-    macd = ta.macd(df["close"]).iloc[-1]
+def rsi(series, period=14):
+    delta = series.diff()
+    gain = delta.where(delta > 0, 0.0)
+    loss = -delta.where(delta < 0, 0.0)
 
-    if side == "CALL":
-        return rsi > 60 and macd["MACDh_12_26_9"] > 0
-    else:
-        return rsi < 40 and macd["MACDh_12_26_9"] < 0
+    avg_gain = gain.ewm(alpha=1/period, min_periods=period).mean()
+    avg_loss = loss.ewm(alpha=1/period, min_periods=period).mean()
+
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
+
+
+def macd(series, fast=12, slow=26, signal=9):
+    ema_fast = series.ewm(span=fast, adjust=False).mean()
+    ema_slow = series.ewm(span=slow, adjust=False).mean()
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    hist = macd_line - signal_line
+    return macd_line, signal_line, hist
+
 
 def analyze_symbol(symbol):
     if not market_open():

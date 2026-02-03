@@ -7,5 +7,4 @@ pandas
 numpy
 pytz
 requests
-pandas_ta
 nsepython
