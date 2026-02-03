@@ -3,5 +3,4 @@ pandas==2.1.1
 numpy==1.26.0
 requests==2.32.5
 yfinance==0.2.41
-pandas_ta==0.3.27b0
 nsepython==0.0.27
