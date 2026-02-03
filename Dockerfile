@@ -9,11 +9,11 @@ RUN apt-get update && apt-get install -y \
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY pro_option_alert_200symbols.py .
 
 EXPOSE 5009
 
 CMD ["python", "pro_option_alert_200symbols.py"]
-
