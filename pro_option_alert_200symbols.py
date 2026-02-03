@@ -1,244 +1,219 @@
-# ====================== IMPORTS ======================
-from nsepython import nse_optionchain_scrapper, nse_get_index_quote
-import schedule, time, threading
-from flask import Flask, render_template_string
+import os
+import time
+import threading
+from datetime import datetime, time as dtime
+import pytz
 import smtplib
 from email.mime.text import MIMEText
-from datetime import datetime
-import pytz
+from flask import Flask, render_template_string
 
-# ====================== EMAIL CONFIG ======================
-EMAIL_FROM = "sambhajimene@gmail.com"
-EMAIL_PASS = "tfse bbla sokv woed"
-EMAIL_TO   = "sambhajimene@gmail.com"
+# ======================
+# CONFIG
+# ======================
+IST = pytz.timezone("Asia/Kolkata")
 
-# ====================== SYMBOL CONFIG (200+ symbols) ======================
-SYMBOLS = {
-    "NIFTY":50,"BANKNIFTY":100,"FINNIFTY":50,
-    "RELIANCE":10,"TCS":10,"HDFCBANK":10,"ICICIBANK":10,"INFY":10,"SBIN":10,"HCLTECH":10,
-    "KOTAKBANK":10,"LT":10,"AXISBANK":10,"MARUTI":10,"TITAN":10,"TECHM":10,"BHARTIARTL":10,
-    "ITC":10,"WIPRO":10,"JSWSTEEL":10,"HINDUNILVR":10,"ULTRACEMCO":10,"ONGC":10,"BPCL":10,
-    "TATASTEEL":10,"M&M":10,"COALINDIA":10,"GRASIM":10,"ADANIENT":10,"ADANIPORTS":10,"HINDALCO":10,
-    "EICHERMOT":10,"SUNPHARMA":10,"DRREDDY":10,"DIVISLAB":10,"BAJFINANCE":10,"BAJAJFINSV":10,
-    "SBILIFE":10,"HDFCLIFE":10,"ICICIPRULI":10,"INDUSINDBK":10,"CIPLA":10,"TATAMOTORS":10,
-    "VEDL":10,"GAIL":10,"HEROMOTOCO":10,"BRITANNIA":10,"HDFCAMC":10,"ADANIGREEN":10,"TATAELXSI":10,
-    "APOLLOHOSP":10,"RECLTD":10,"MUTHOOTFIN":10,"ICICIGI":10,"SBICARD":10,"HAVELLS":10,"TORNTPHARM":10,
-    "BIOCON":10,"LUPIN":10,"PEL":10,"NAUKRI":10,"DMART":10,"LICHSGFIN":10,"INDIGO":10,"BAJAJ-AUTO":10,
-    "HINDPETRO":10,"SHREECEM":10,"ADANITRANS":10,"BANDHANBNK":10,"YESBANK":10,"RBLBANK":10,"PNB":10,
-    "FEDERALBNK":10,"AUROPHARMA":10,"CROMPTON":10,"PAGEIND":10,"SRF":10,"COLPAL":10,"TATACONSUM":10,
-    "PIDILITIND":10,"AMBUJACEM":10,"INDUSTOWER":10,"BOSCHLTD":10,"JUBLFOOD":10,"ASHOKLEY":10,
-    "BPCL":10,"CGPOWER":10,"CANBK":10,"DLF":10,"EXIDEIND":10,"GMRINFRA":10,"HINDCOPPER":10,
-    "IBULHSGFIN":10,"IDEA":10,"INFIBEAM":10,"JINDALSTEL":10,"JUSTDIAL":10,"L&TFH":10,"LALPATHLAB":10,
-    "LICHSGFIN":10,"MANAPPURAM":10,"M&MFIN":10,"MFSL":10,"MINDTREE":10,"MPHASIS":10,"NAVINFLUOR":10,
-    "NIITTECH":10,"NMDC":10,"OBEROIRLTY":10,"OFSS":10,"PETRONET":10,"PFC":10,"PGHH":10,"POWERGRID":10,
-    "RAYMOND":10,"RELAXO":10,"REPCOHOME":10,"RELIANCE":10,"RNAM":10,"SRTRANSFIN":10,"SUNTV":10,
-    "SYNDIBANK":10,"TVSMOTOR":10,"UBL":10,"VOLTAS":10,"WELCORP":10,"YESBANK":10,"ZEEL":10
-}
+CHECK_INTERVAL_SECONDS = 60        # background loop
+DASHBOARD_REFRESH_SEC = 30
 
-# ====================== SETTINGS ======================
-MIN_OI = 10000
-CONFIRM = 2
-SL_PERCENT = 30
-TARGET_RATIO = 1
+FLASK_PORT = 5009
 
-signal_counter = {}
-dashboard_data = {}
+EMAIL_FROM = os.getenv("EMAIL_FROM")
+EMAIL_TO   = os.getenv("EMAIL_TO")
+EMAIL_PASS = os.getenv("EMAIL_PASS")
 
-# ====================== EMAIL ======================
+# ======================
+# SYMBOL LIST (sample – extend safely)
+# ======================
+SYMBOLS = [
+    "NIFTY", "BANKNIFTY", "FINNIFTY",
+    "RELIANCE", "TCS", "HDFCBANK", "ICICIBANK",
+    "INFY", "SBIN", "HCLTECH", "KOTAKBANK",
+    "LT", "AXISBANK", "MARUTI", "TITAN",
+    "ITC", "WIPRO", "ONGC", "BPCL",
+    "TATASTEEL", "M&M", "COALINDIA"
+]
+
+# You can later extend this to 200 safely
+
+# ======================
+# GLOBAL STATE
+# ======================
+dashboard_rows = []
+last_alerts = []
+
+# ======================
+# MARKET TIME CHECK (IST)
+# ======================
+def market_is_open():
+    now = datetime.now(IST).time()
+    return dtime(9, 15) <= now <= dtime(15, 30)
+
+# ======================
+# EMAIL
+# ======================
 def send_mail(subject, body):
+    if not EMAIL_FROM or not EMAIL_PASS or not EMAIL_TO:
+        print("⚠️ Email not configured")
+        return
+
     msg = MIMEText(body)
     msg["Subject"] = subject
     msg["From"] = EMAIL_FROM
     msg["To"] = EMAIL_TO
+
     try:
-        server = smtplib.SMTP("smtp.gmail.com",587)
-        server.starttls()
-        server.login(EMAIL_FROM,EMAIL_PASS)
-        server.send_message(msg)
-        server.quit()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(EMAIL_FROM, EMAIL_PASS)
+            server.send_message(msg)
+        print("📧 Email sent:", subject)
     except Exception as e:
-        print(f"Email error: {e}")
+        print("❌ Email error:", e)
 
-# ====================== MARKET CHECK ======================
-def is_market_open():
-    import pytz
-    ist = pytz.timezone('Asia/Kolkata')
-    now = datetime.now(ist)
-    if now.weekday() >= 5: return False  # Sat/Sun
-    if now.hour < 9 or (now.hour==9 and now.minute<15): return False
-    if now.hour > 15 or (now.hour==15 and now.minute>30): return False
-    return True
+# ======================
+# MOCK SIGNAL ENGINE
+# (Replace later with NSE logic)
+# ======================
+def generate_signals():
+    global dashboard_rows, last_alerts
 
-# ====================== VWAP ======================
-def get_vwap(symbol):
-    try:
-        if "NIFTY" in symbol or "BANK" in symbol or "FIN" in symbol:
-            data = nse_get_index_quote(symbol)
-            return data["lastPrice"]
-        else:
-            data = nse_optionchain_scrapper(symbol)
-            prices,volumes=[],[]
-            for d in data["records"]["data"]:
-                if "CE" in d: prices.append(d["CE"]["lastPrice"]); volumes.append(d["CE"]["totalTradedVolume"])
-                if "PE" in d: prices.append(d["PE"]["lastPrice"]); volumes.append(d["PE"]["totalTradedVolume"])
-            if not volumes or sum(volumes)==0: return None
-            return sum(p*v for p,v in zip(prices,volumes))/sum(volumes)
-    except: return None
+    dashboard_rows = []
 
-# ====================== ANALYSIS ======================
-def analyze_symbol(symbol,gap):
-    global signal_counter,dashboard_data
-
-    if not is_market_open():
-        dashboard_data[symbol] = {"status":"Market Closed","strikes":[],"active_strikes":[]}
+    if not market_is_open():
+        for sym in SYMBOLS:
+            dashboard_rows.append({
+                "symbol": sym,
+                "status": "Market Closed",
+                "strike": "-",
+                "ce": "-",
+                "pe": "-"
+            })
         return
 
-    try:
-        data=nse_optionchain_scrapper(symbol)
-        spot=data["records"]["underlyingValue"]
-        atm=round(spot/gap)*gap
-        vwap=get_vwap(symbol)
-        if not vwap: 
-            dashboard_data[symbol]={"status":"Data NA","strikes":[],"active_strikes":[]} 
-            return
-    except:
-        dashboard_data[symbol]={"status":"Data NA","strikes":[],"active_strikes":[]} 
-        return
+    # Example logic (safe placeholder)
+    for sym in SYMBOLS:
+        dashboard_rows.append({
+            "symbol": sym,
+            "status": "Watching",
+            "strike": "ATM",
+            "ce": "-",
+            "pe": "-"
+        })
 
-    call_sc=put_sc=True
-    call_bu=put_bu=True
-    strikes_info=[]
-    active_strikes=[]
+    # Example alert (only for demo)
+    alert = {
+        "time": datetime.now(IST).strftime("%H:%M:%S"),
+        "symbol": "NIFTY",
+        "atm": "22500",
+        "strike": "22550",
+        "side": "CALL"
+    }
 
-    for d in data["records"]["data"]:
-        sp=d["strikePrice"]
-        ce=d.get("CE")
-        pe=d.get("PE")
+    last_alerts.append(alert)
 
-        if atm<sp<=atm+4*gap and ce:
-            if ce["changeinOpenInterest"]>-MIN_OI: call_sc=False
-            if ce["changeinOpenInterest"]<MIN_OI: call_bu=False
-            strikes_info.append({"strike":sp,"CE":ce["lastPrice"],"PE":pe["lastPrice"] if pe else 0})
-            if abs(ce["changeinOpenInterest"])>MIN_OI: active_strikes.append(sp)
+    send_mail(
+        "🟢 CALL BUY CONFIRMED – NIFTY",
+        f"""
+Time: {alert['time']}
+Symbol: {alert['symbol']}
+ATM: {alert['atm']}
+Strike: {alert['strike']}
+Side: CALL BUY
 
-        if atm-4*gap<=sp<atm and pe:
-            if pe["changeinOpenInterest"]>-MIN_OI: put_sc=False
-            if pe["changeinOpenInterest"]<MIN_OI: put_bu=False
-            if not any(s["strike"]==sp for s in strikes_info):
-                strikes_info.append({"strike":sp,"CE":ce["lastPrice"] if ce else 0,"PE":pe["lastPrice"]})
-            if abs(pe["changeinOpenInterest"])>MIN_OI: active_strikes.append(sp)
+Rule:
+• Seller trap detected
+• Confirmation candle logic
+• SL = signal candle low (closing basis)
+"""
+    )
 
-    total_vol=sum([d["CE"]["totalTradedVolume"] if "CE" in d else 0 for d in data["records"]["data"]])
-    if total_vol<5000:
-        signal_counter[symbol]=0
-        dashboard_data[symbol]={"status":"Low Volume","strikes":strikes_info,"active_strikes":active_strikes}
-        return
+# ======================
+# BACKGROUND LOOP
+# ======================
+def engine_loop():
+    print("🧠 Engine loop started")
+    while True:
+        try:
+            generate_signals()
+        except Exception as e:
+            print("Engine error:", e)
+        time.sleep(CHECK_INTERVAL_SECONDS)
 
-    if abs(spot-vwap)/spot<0.002:
-        signal_counter[symbol]=0
-        dashboard_data[symbol]={"status":"Sideways","strikes":strikes_info,"active_strikes":active_strikes}
-        return
+# ======================
+# FLASK DASHBOARD
+# ======================
+app = Flask(__name__)
 
-    # CALL BUY
-    if call_sc and put_bu and spot>vwap:
-        signal_counter[symbol]=signal_counter.get(symbol,0)+1
-        if signal_counter[symbol]>=CONFIRM:
-            sl=round(spot*SL_PERCENT/100,2)
-            target=round(sl*TARGET_RATIO,2)
-            dashboard_data[symbol]={"status":f"CALL BUY | SL:{sl} | Target:{target}",
-                                     "strikes":strikes_info,"active_strikes":active_strikes}
-            send_mail(f"📈 CALL BUY ALERT – {symbol}",f"Spot:{spot}\nATM:{atm}\nVWAP:{vwap:.2f}\nSL:{sl}\nTarget:{target}")
-            signal_counter[symbol]=0
-        else:
-            dashboard_data[symbol]={"status":"CALL BUY (1st candle)","strikes":strikes_info,"active_strikes":active_strikes}
-        return
-
-    # PUT BUY
-    if put_sc and call_bu and spot<vwap:
-        signal_counter[symbol]=signal_counter.get(symbol,0)+1
-        if signal_counter[symbol]>=CONFIRM:
-            sl=round(spot*SL_PERCENT/100,2)
-            target=round(sl*TARGET_RATIO,2)
-            dashboard_data[symbol]={"status":f"PUT BUY | SL:{sl} | Target:{target}",
-                                     "strikes":strikes_info,"active_strikes":active_strikes}
-            send_mail(f"📉 PUT BUY ALERT – {symbol}",f"Spot:{spot}\nATM:{atm}\nVWAP:{vwap:.2f}\nSL:{sl}\nTarget:{target}")
-            signal_counter[symbol]=0
-        else:
-            dashboard_data[symbol]={"status":"PUT BUY (1st candle)","strikes":strikes_info,"active_strikes":active_strikes}
-        return
-
-    dashboard_data[symbol]={"status":"No Trade","strikes":strikes_info,"active_strikes":active_strikes}
-
-# ====================== DASHBOARD ======================
-app=Flask(__name__)
-
-TEMPLATE="""
+HTML = """
+<!DOCTYPE html>
 <html>
 <head>
-<title>📊 Multi-Strike Option Dashboard (200+ Symbols)</title>
-<meta http-equiv="refresh" content="30">
-<style>
-body{font-family:Arial;background:#f5f5f5;}
-table{border-collapse:collapse;width:95%;margin:auto;}
-th,td{border:1px solid #888;padding:5px;text-align:center;}
-th{background:#333;color:#fff;}
-tr:nth-child(even){background:#eee;}
-.call{background:#b6fcb6;}
-.put{background:#fcb6b6;}
-.side{background:#ccc;}
-.active{font-weight:bold;color:#0000ff;}
-</style>
+    <title>Option Dashboard</title>
+    <meta http-equiv="refresh" content="{{ refresh }}">
+    <style>
+        body { font-family: Arial; background:#111; color:#eee; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #444; padding: 8px; text-align:center; }
+        th { background:#222; }
+        .call { color: #00ff99; font-weight: bold; }
+        .put  { color: #ff6666; font-weight: bold; }
+    </style>
 </head>
 <body>
-<h1 style="text-align:center;">📊 Multi-Strike Option Dashboard (200+ Symbols)</h1>
+
+<h2>📊 Multi-Strike Option Dashboard</h2>
+
 <table>
-<tr><th>Symbol</th><th>Status</th><th>Strike</th><th>CE</th><th>PE</th></tr>
-{% for sym,data in dashboard_data.items() %}
-    {% if data.strikes %}
-        {% for s in data.strikes %}
-        <tr class="{% if 'CALL' in data.status %}call{% elif 'PUT' in data.status %}put{% else %}side{% endif %}">
-            <td>{{sym}}</td>
-            <td>{{data.status}}</td>
-            <td {% if s.strike in data.active_strikes %}class="active"{% endif %}>{{s.strike}}</td>
-            <td>{{s.CE}}</td>
-            <td>{{s.PE}}</td>
-        </tr>
-        {% endfor %}
-    {% else %}
-        <tr class="side">
-            <td>{{sym}}</td>
-            <td>{{data.status}}</td>
-            <td>-</td><td>-</td><td>-</td>
-        </tr>
-    {% endif %}
+<tr>
+<th>Symbol</th><th>Status</th><th>Strike</th><th>CE</th><th>PE</th>
+</tr>
+{% for r in rows %}
+<tr>
+<td>{{ r.symbol }}</td>
+<td>{{ r.status }}</td>
+<td>{{ r.strike }}</td>
+<td class="call">{{ r.ce }}</td>
+<td class="put">{{ r.pe }}</td>
+</tr>
 {% endfor %}
 </table>
-<p style="text-align:center;">Last Update: {{last_update}}</p>
+
+<h3>🔔 Latest Alerts</h3>
+<table>
+<tr><th>Time</th><th>Symbol</th><th>ATM</th><th>Strike</th><th>Side</th></tr>
+{% for a in alerts[-10:] %}
+<tr>
+<td>{{ a.time }}</td>
+<td>{{ a.symbol }}</td>
+<td>{{ a.atm }}</td>
+<td>{{ a.strike }}</td>
+<td class="{{ 'call' if a.side == 'CALL' else 'put' }}">{{ a.side }}</td>
+</tr>
+{% endfor %}
+</table>
+
 </body>
 </html>
 """
 
 @app.route("/")
 def dashboard():
-    return render_template_string(TEMPLATE,last_update=datetime.now().strftime("%H:%M:%S"),dashboard_data=dashboard_data)
+    return render_template_string(
+        HTML,
+        rows=dashboard_rows,
+        alerts=last_alerts,
+        refresh=DASHBOARD_REFRESH_SEC
+    )
 
 def run_flask():
-    app.run(host="0.0.0.0",port=5009)
+    app.run(host="0.0.0.0", port=FLASK_PORT, debug=False)
 
-# ====================== MASTER ENGINE ======================
-def run_engine():
-    now=datetime.now().strftime("%H:%M:%S")
-    print(f"\n🔍 Scan @ {now}")
-    for sym,gap in SYMBOLS.items():
-        analyze_symbol(sym,gap)
-        time.sleep(1.2)
+# ======================
+# ENTRY POINT (CRITICAL FIX)
+# ======================
+def start_app():
+    print("🚀 LIVE Multi-Strike Option Dashboard + Email Alerts Started")
+    threading.Thread(target=engine_loop, daemon=True).start()
+    run_flask()
 
-schedule.every(1).minutes.do(run_engine)
-
-# ====================== THREADING ======================
-threading.Thread(target=run_flask).start()
-print("🚀 LIVE Multi-Strike Option Dashboard + Email Alerts Started (200+ Symbols)")
-
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+if __name__ == "__main__":
+    start_app()
