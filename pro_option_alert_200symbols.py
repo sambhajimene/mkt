@@ -122,10 +122,18 @@ def market_is_open():
 # ======================
 # EMAIL
 # ======================
-def send_mail(subject, body):
-    if not EMAIL_FROM or not EMAIL_PASS or not EMAIL_TO:
-        print("⚠️ Email not configured")
-        return
+def should_send_alert(symbol, strike, side):
+    """
+    Returns True ONLY if strike or side changed
+    """
+    key = f"{strike}_{side}"
+
+    if LAST_ALERT.get(symbol) == key:
+        return False  # ❌ same strike + same side → ignore
+
+    LAST_ALERT[symbol] = key
+    return True
+
 
     msg = MIMEText(body)
     msg["Subject"] = subject
