@@ -8,7 +8,7 @@ from email.mime.text import MIMEText
 from flask import Flask, render_template_string
 
 import pandas as pd
-import pandas_ta as ta
+#import pandas_ta as ta
 from nsepython import nse_optionchain_scrapper, nse_get_index_quote
 
 # ================== CONFIG ==================
