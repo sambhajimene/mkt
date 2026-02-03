@@ -1,7 +1,5 @@
-####
+nsepython
 flask
-pandas
-numpy
-yfinance
-ta
-pytz
+schedule
+smtplib   # built-in, no need to install
+email     # built-in, no need to install

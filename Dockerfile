@@ -1,37 +1,19 @@
-# # =====================
-# # Use official Python image
-# # =====================
-# FROM python:3.12-slim
+FROM python:3.11-slim
 
-# # Set working directory
-# WORKDIR /app
-
-# # Copy application code
-# COPY . /app
-
-# # Install dependencies
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# # Expose Flask port
-# EXPOSE 5009
-
-# # Run Flask app on 0.0.0.0:5009
-# CMD ["python", "pro_option_alert_200symbols.py"]
-
-FROM python:3.12-slim
-
+# Set working directory
 WORKDIR /app
 
-# system deps (ta + pandas safe)
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
+# Copy requirements
 COPY requirements.txt .
+
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy your script
 COPY pro_option_alert_200symbols.py .
 
-EXPOSE 5000
+# Expose port for Flask dashboard
+EXPOSE 5009
 
+# Run the script
 CMD ["python", "pro_option_alert_200symbols.py"]
