@@ -1,139 +1,33 @@
 import os
 import time
-import threading
-from datetime import datetime, time as dtime
 import pytz
 import smtplib
+import threading
+from datetime import datetime
 from email.mime.text import MIMEText
 from flask import Flask, render_template_string
 
-# ======================
-# CONFIG
-# ======================
+# ================= IST TIME =================
 IST = pytz.timezone("Asia/Kolkata")
 
-CHECK_INTERVAL_SECONDS = 60        # background loop
-DASHBOARD_REFRESH_SEC = 30
+def ist_now():
+    return datetime.now(IST)
 
-FLASK_PORT = 5009
+# ================= MARKET TIME CHECK =================
+def is_market_open():
+    now = ist_now().time()
+    return now >= datetime.strptime("09:15", "%H:%M").time() and \
+           now <= datetime.strptime("15:30", "%H:%M").time()
 
+# ================= EMAIL CONFIG (FROM ENV) =================
 EMAIL_FROM = os.getenv("EMAIL_FROM")
 EMAIL_TO   = os.getenv("EMAIL_TO")
 EMAIL_PASS = os.getenv("EMAIL_PASS")
 
-# ======================
-# SYMBOL LIST (sample – extend safely)
-# ======================
-SYMBOLS = [
-    # =====================
-    # INDEX OPTIONS
-    # =====================
-    "NIFTY", "BANKNIFTY", "FINNIFTY",
-
-    # =====================
-    # BANKING & FINANCE
-    # =====================
-    "HDFCBANK","ICICIBANK","SBIN","AXISBANK","KOTAKBANK",
-    "BANKBARODA","PNB","IDFCFIRSTB","FEDERALBNK",
-    "INDUSINDBK","AUBANK","CANBK",
-    "BAJFINANCE","BAJAJFINSV","SBILIFE","HDFCLIFE",
-    "ICICIPRULI","CHOLAFIN","MUTHOOTFIN","LICHSGFIN",
-    "PFC","RECLTD","IRFC","MANAPPURAM",
-
-    # =====================
-    # IT
-    # =====================
-    "TCS","INFY","WIPRO","HCLTECH","TECHM","LTIM",
-    "MPHASIS","COFORGE","PERSISTENT","LTTS",
-
-    # =====================
-    # FMCG & CONSUMER
-    # =====================
-    "HINDUNILVR","ITC","NESTLEIND","BRITANNIA",
-    "DABUR","GODREJCP","TATACONSUM","MARICO",
-    "COLPAL","UBL",
-
-    # =====================
-    # METALS
-    # =====================
-    "TATASTEEL","JSWSTEEL","HINDALCO","VEDL",
-    "SAIL","NMDC","JINDALSTEL","ADANIENT","ADANIGREEN",
-
-    # =====================
-    # ENERGY & PSU
-    # =====================
-    "RELIANCE","ONGC","BPCL","IOC","GAIL","POWERGRID",
-    "NTPC","COALINDIA","ADANIPORTS","ADANIPOWER",
-    "TATAPOWER",
-
-    # =====================
-    # AUTO
-    # =====================
-    "MARUTI","TATAMOTORS","M&M","BAJAJ-AUTO",
-    "EICHERMOT","HEROMOTOCO","TVSMOTOR",
-    "ASHOKLEY","BALKRISIND","MRF",
-
-    # =====================
-    # PHARMA & HEALTHCARE
-    # =====================
-    "SUNPHARMA","DRREDDY","CIPLA","DIVISLAB",
-    "APOLLOHOSP","LUPIN","BIOCON","AUROPHARMA",
-    "ALKEM","TORNTPHARM","GLENMARK","GRANULES",
-
-    # =====================
-    # CEMENT & INFRA
-    # =====================
-    "ULTRACEMCO","ACC","AMBUJACEM","SHREECEM",
-    "RAMCOCEM","DLF","LODHA","OBEROIRLTY",
-
-    # =====================
-    # CAPITAL GOODS
-    # =====================
-    "LT","SIEMENS","ABB","BEL","HAL","BHEL",
-    "CUMMINSIND","THERMAX","APLAPOLLO",
-
-    # =====================
-    # OTHERS (HIGH LIQUIDITY OPTIONS)
-    # =====================
-    "DMART","NAUKRI","IRCTC","ZOMATO","PAYTM",
-    "INDIGO","TRENT","PAGEIND","HAVELLS",
-    "PIDILITIND","ASIANPAINT","BERGEPAINT",
-    "POLYCAB","VOLTAS","ESCORTS",
-    "SRF","DEEPAKNTR","ATUL","PIIND",
-    "BANDHANBNK","RBLBANK","YESBANK"
-]
-
-
-# You can later extend this to 200 safely
-
-# ======================
-# GLOBAL STATE
-# ======================
-dashboard_rows = []
-last_alerts = []
-
-# ======================
-# MARKET TIME CHECK (IST)
-# ======================
-def market_is_open():
-    now = datetime.now(IST).time()
-    return dtime(9, 15) <= now <= dtime(15, 30)
-
-# ======================
-# EMAIL
-# ======================
-def should_send_alert(symbol, strike, side):
-    """
-    Returns True ONLY if strike or side changed
-    """
-    key = f"{strike}_{side}"
-
-    if LAST_ALERT.get(symbol) == key:
-        return False  # ❌ same strike + same side → ignore
-
-    LAST_ALERT[symbol] = key
-    return True
-
+def send_mail(subject, body):
+    if not all([EMAIL_FROM, EMAIL_TO, EMAIL_PASS]):
+        print("❌ Email env missing")
+        return
 
     msg = MIMEText(body)
     msg["Subject"] = subject
@@ -141,135 +35,149 @@ def should_send_alert(symbol, strike, side):
     msg["To"] = EMAIL_TO
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(EMAIL_FROM, EMAIL_PASS)
-            server.send_message(msg)
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        server.login(EMAIL_FROM, EMAIL_PASS)
+        server.send_message(msg)
+        server.quit()
         print("📧 Email sent:", subject)
     except Exception as e:
         print("❌ Email error:", e)
 
-# ======================
-# MOCK SIGNAL ENGINE
-# (Replace later with NSE logic)
-# ======================
-def generate_signals():
-    global dashboard_rows, last_alerts
+# ================= SYMBOL LIST (SAMPLE – EXTEND TO 200) =================
+SYMBOLS = [
+    "NIFTY", "BANKNIFTY", "FINNIFTY",
+    "RELIANCE", "TCS", "INFY", "HDFCBANK",
+    "ICICIBANK", "SBIN", "LT", "HCLTECH"
+]
+# 👉 You can safely extend this list to 200 NSE symbols
 
-    dashboard_rows = []
+# ================= ALERT MEMORY =================
+LAST_ALERT = {}  # symbol -> "strike_side"
 
-    if not market_is_open():
-        for sym in SYMBOLS:
-            dashboard_rows.append({
-                "symbol": sym,
-                "status": "Market Closed",
-                "strike": "-",
-                "ce": "-",
-                "pe": "-"
-            })
-        return
+# ================= DASHBOARD STORAGE =================
+LATEST_ALERTS = []
 
-    # Example logic (safe placeholder)
-    for sym in SYMBOLS:
-        dashboard_rows.append({
-            "symbol": sym,
-            "status": "Watching",
-            "strike": "ATM",
-            "ce": "-",
-            "pe": "-"
-        })
+# ================= CORE LOGIC (SIMULATED DATA PLACEHOLDER) =================
+def generate_signal(symbol):
+    """
+    Replace this block with NSE live option-chain logic.
+    This structure is FINAL & STABLE.
+    """
 
-    # Example alert (only for demo)
-    alert = {
-        "time": datetime.now(IST).strftime("%H:%M:%S"),
-        "symbol": "NIFTY",
-        "atm": "22500",
-        "strike": "22550",
-        "side": "CALL"
-    }
+    # ---- Dummy example values (structure only) ----
+    atm = 22500
+    strike = atm + 50
+    side = "CALL"   # or PUT
 
-    last_alerts.append(alert)
+    rsi_15m = 62 if side == "CALL" else 38
+    macd_15m = True
+    macd_1h = True
+    macd_1d = True
 
-    send_mail(
-        "🟢 CALL BUY CONFIRMED – NIFTY",
-        f"""
-Time: {alert['time']}
-Symbol: {alert['symbol']}
-ATM: {alert['atm']}
-Strike: {alert['strike']}
-Side: CALL BUY
+    seller_trap = True  # placeholder
 
-Rule:
-• Seller trap detected
-• Confirmation candle logic
-• SL = signal candle low (closing basis)
-"""
-    )
+    # ================= FILTERS =================
+    if side == "CALL" and rsi_15m <= 60:
+        return None
+    if side == "PUT" and rsi_15m >= 40:
+        return None
+    if not (macd_15m and macd_1h and macd_1d):
+        return None
+    if not seller_trap:
+        return None
 
-# ======================
-# BACKGROUND LOOP
-# ======================
-def engine_loop():
-    print("🧠 Engine loop started")
+    return atm, strike, side
+
+# ================= ALERT DEDUP LOGIC =================
+def should_send_alert(symbol, strike, side):
+    key = f"{strike}_{side}"
+    if LAST_ALERT.get(symbol) == key:
+        return False
+    LAST_ALERT[symbol] = key
+    return True
+
+# ================= MAIN SCANNER LOOP =================
+def scanner():
+    print("🚀 Scanner started")
     while True:
-        try:
-            generate_signals()
-        except Exception as e:
-            print("Engine error:", e)
-        time.sleep(CHECK_INTERVAL_SECONDS)
+        if not is_market_open():
+            time.sleep(30)
+            continue
 
-# ======================
-# FLASK DASHBOARD
-# ======================
+        for symbol in SYMBOLS:
+            result = generate_signal(symbol)
+            if not result:
+                continue
+
+            atm, strike, side = result
+
+            if should_send_alert(symbol, strike, side):
+                t = ist_now().strftime("%H:%M:%S")
+
+                alert = {
+                    "time": t,
+                    "symbol": symbol,
+                    "atm": atm,
+                    "strike": strike,
+                    "side": side
+                }
+
+                LATEST_ALERTS.insert(0, alert)
+                LATEST_ALERTS[:] = LATEST_ALERTS[:20]
+
+                subject = f"{symbol} {side} BUY CONFIRMED"
+                body = f"""
+Time: {t}
+Symbol: {symbol}
+ATM: {atm}
+Strike: {strike}
+Side: {side}
+
+All filters matched:
+✔ Seller trap
+✔ RSI
+✔ MACD (15m/1h/1d)
+"""
+
+                send_mail(subject, body)
+
+        time.sleep(60)
+
+# ================= FLASK DASHBOARD =================
 app = Flask(__name__)
 
 HTML = """
-<!DOCTYPE html>
+<!doctype html>
 <html>
 <head>
-    <title>Option Dashboard</title>
-    <meta http-equiv="refresh" content="{{ refresh }}">
-    <style>
-        body { font-family: Arial; background:#111; color:#eee; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #444; padding: 8px; text-align:center; }
-        th { background:#222; }
-        .call { color: #00ff99; font-weight: bold; }
-        .put  { color: #ff6666; font-weight: bold; }
-    </style>
+<title>Live Option Alerts</title>
+<meta http-equiv="refresh" content="30">
+<style>
+body { font-family: Arial; background:#0f172a; color:#e5e7eb }
+table { border-collapse: collapse; width: 100% }
+th, td { padding: 8px; border: 1px solid #334155; text-align:center }
+th { background:#1e293b }
+.call { color:#22c55e; font-weight:bold }
+.put { color:#ef4444; font-weight:bold }
+</style>
 </head>
 <body>
-
-<h2>📊 Multi-Strike Option Dashboard</h2>
-
-<table>
-<tr>
-<th>Symbol</th><th>Status</th><th>Strike</th><th>CE</th><th>PE</th>
-</tr>
-{% for r in rows %}
-<tr>
-<td>{{ r.symbol }}</td>
-<td>{{ r.status }}</td>
-<td>{{ r.strike }}</td>
-<td class="call">{{ r.ce }}</td>
-<td class="put">{{ r.pe }}</td>
-</tr>
-{% endfor %}
-</table>
-
-<h3>🔔 Latest Alerts</h3>
+<h2>📊 Latest Alerts (15-Min Candle)</h2>
 <table>
 <tr><th>Time</th><th>Symbol</th><th>ATM</th><th>Strike</th><th>Side</th></tr>
-{% for a in alerts[-10:] %}
+{% for a in alerts %}
 <tr>
-<td>{{ a.time }}</td>
-<td>{{ a.symbol }}</td>
-<td>{{ a.atm }}</td>
-<td>{{ a.strike }}</td>
-<td class="{{ 'call' if a.side == 'CALL' else 'put' }}">{{ a.side }}</td>
+<td>{{a.time}}</td>
+<td>{{a.symbol}}</td>
+<td>{{a.atm}}</td>
+<td>{{a.strike}}</td>
+<td class="{{'call' if a.side=='CALL' else 'put'}}">{{a.side}}</td>
 </tr>
 {% endfor %}
 </table>
 
+<h3>📌 Tracking Symbols ({{symbols|length}})</h3>
+<p>{{ symbols|join(", ") }}</p>
 </body>
 </html>
 """
@@ -278,21 +186,11 @@ HTML = """
 def dashboard():
     return render_template_string(
         HTML,
-        rows=dashboard_rows,
-        alerts=last_alerts,
-        refresh=DASHBOARD_REFRESH_SEC
+        alerts=LATEST_ALERTS,
+        symbols=SYMBOLS
     )
 
-def run_flask():
-    app.run(host="0.0.0.0", port=FLASK_PORT, debug=False)
-
-# ======================
-# ENTRY POINT (CRITICAL FIX)
-# ======================
-def start_app():
-    print("🚀 LIVE Multi-Strike Option Dashboard + Email Alerts Started")
-    threading.Thread(target=engine_loop, daemon=True).start()
-    run_flask()
-
+# ================= START =================
 if __name__ == "__main__":
-    start_app()
+    threading.Thread(target=scanner, daemon=True).start()
+    app.run(host="0.0.0.0", port=5009)
