@@ -22,12 +22,83 @@ CHECK_INTERVAL = 60        # seconds
 CANDLE_TIMEFRAME = "15m"
 
 # ================== SYMBOL LIST (200+) ==================
-SYMBOLS = [
+SSYMBOLS = [
+    # =====================
+    # INDEX OPTIONS
+    # =====================
     "NIFTY", "BANKNIFTY", "FINNIFTY",
-    "RELIANCE","TCS","INFY","HDFCBANK","ICICIBANK","SBIN",
-    "HCLTECH","LT","AXISBANK","KOTAKBANK","ITC","BHARTIARTL",
-    "MARUTI","TITAN","ONGC","SUNPHARMA","BAJFINANCE",
-    # (extend safely – logic supports 200+)
+
+    # =====================
+    # BANKING & FINANCE
+    # =====================
+    "HDFCBANK","ICICIBANK","SBIN","AXISBANK","KOTAKBANK",
+    "BANKBARODA","PNB","IDFCFIRSTB","FEDERALBNK",
+    "INDUSINDBK","AUBANK","CANBK",
+    "BAJFINANCE","BAJAJFINSV","SBILIFE","HDFCLIFE",
+    "ICICIPRULI","CHOLAFIN","MUTHOOTFIN","LICHSGFIN",
+    "PFC","RECLTD","IRFC","MANAPPURAM",
+
+    # =====================
+    # IT
+    # =====================
+    "TCS","INFY","WIPRO","HCLTECH","TECHM","LTIM",
+    "MPHASIS","COFORGE","PERSISTENT","LTTS",
+
+    # =====================
+    # FMCG & CONSUMER
+    # =====================
+    "HINDUNILVR","ITC","NESTLEIND","BRITANNIA",
+    "DABUR","GODREJCP","TATACONSUM","MARICO",
+    "COLPAL","UBL",
+
+    # =====================
+    # METALS
+    # =====================
+    "TATASTEEL","JSWSTEEL","HINDALCO","VEDL",
+    "SAIL","NMDC","JINDALSTEL","ADANIENT","ADANIGREEN",
+
+    # =====================
+    # ENERGY & PSU
+    # =====================
+    "RELIANCE","ONGC","BPCL","IOC","GAIL","POWERGRID",
+    "NTPC","COALINDIA","ADANIPORTS","ADANIPOWER",
+    "TATAPOWER",
+
+    # =====================
+    # AUTO
+    # =====================
+    "MARUTI","TATAMOTORS","M&M","BAJAJ-AUTO",
+    "EICHERMOT","HEROMOTOCO","TVSMOTOR",
+    "ASHOKLEY","BALKRISIND","MRF",
+
+    # =====================
+    # PHARMA & HEALTHCARE
+    # =====================
+    "SUNPHARMA","DRREDDY","CIPLA","DIVISLAB",
+    "APOLLOHOSP","LUPIN","BIOCON","AUROPHARMA",
+    "ALKEM","TORNTPHARM","GLENMARK","GRANULES",
+
+    # =====================
+    # CEMENT & INFRA
+    # =====================
+    "ULTRACEMCO","ACC","AMBUJACEM","SHREECEM",
+    "RAMCOCEM","DLF","LODHA","OBEROIRLTY",
+
+    # =====================
+    # CAPITAL GOODS
+    # =====================
+    "LT","SIEMENS","ABB","BEL","HAL","BHEL",
+    "CUMMINSIND","THERMAX","APLAPOLLO",
+
+    # =====================
+    # OTHERS (HIGH LIQUIDITY OPTIONS)
+    # =====================
+    "DMART","NAUKRI","IRCTC","ZOMATO","PAYTM",
+    "INDIGO","TRENT","PAGEIND","HAVELLS",
+    "PIDILITIND","ASIANPAINT","BERGEPAINT",
+    "POLYCAB","VOLTAS","ESCORTS",
+    "SRF","DEEPAKNTR","ATUL","PIIND",
+    "BANDHANBNK","RBLBANK","YESBANK"
 ]
 
 # ================== STATE ==================
