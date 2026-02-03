@@ -1,67 +1,57 @@
 stages:
-  - build
+  - build_and_push
   - deploy
 
 variables:
   IMAGE_TAG: latest
   IMAGE_NAME: quay.io/sambhajimene/mk
   FULL_IMAGE: $IMAGE_NAME:$IMAGE_TAG
-
   OPENSHIFT_PROJECT: sambhajimene-dev
   APP_NAME: mk
-  APP_PORT: "5009"
+  APP_PORT: 5009
 
-# =====================
-# BUILD & PUSH (Docker Buildx)
+##=====================
+# BUILD & PUSH
 # =====================
 build_and_push:
-  stage: build
-  image: docker:24
-  services:
-    - docker:24-dind
-  variables:
-    DOCKER_TLS_CERTDIR: ""
+  stage: build_and_push
+  image: quay.io/buildah/stable:latest
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - "**/*.py"
+        - Dockerfile
+        - requirements.txt
+    - when: never
   script:
-    - echo "🔐 Login to Quay.io"
-    - docker login quay.io -u "$QUAY_USER" -p "$QUAY_PASSWORD"
+    - echo "🔨 Building image $FULL_IMAGE"
+    - buildah bud -t $FULL_IMAGE .
+    - echo "🔐 Logging in to Quay.io"
+    - buildah login -u $QUAY_USER -p $QUAY_PASSWORD quay.io
+    - echo "📦 Pushing image $FULL_IMAGE to Quay.io"
+    - buildah push $FULL_IMAGE docker://$FULL_IMAGE
 
-    - echo "🔧 Enable Docker Buildx"
-    - docker buildx create --use
-
-    - echo "🔨 Build & Push image (linux/amd64)"
-    - docker buildx build \
-        --platform linux/amd64 \
-        -t $FULL_IMAGE \
-        --push .
-
-# =====================
-# DEPLOY TO OPENSHIFT
+#=====================
+# DEPLOY
 # =====================
 deploy:
   stage: deploy
   image: quay.io/openshift/origin-cli:latest
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
   script:
     - echo "🔐 Login to OpenShift"
-    - oc login "$OPENSHIFT_SERVER" \
-        --token="$OPENSHIFT_TOKEN" \
-        --insecure-skip-tls-verify=true
+    - oc login "$OPENSHIFT_SERVER" --token="$OPENSHIFT_TOKEN" --insecure-skip-tls-verify=true
 
-    - echo "📦 Select project"
+    - echo "📦 Selecting project"
     - oc project "$OPENSHIFT_PROJECT"
 
-    - echo "🚀 Create or update deployment"
-    - |
-      oc get deploy $APP_NAME >/dev/null 2>&1 || \
-      oc create deployment $APP_NAME --image=$FULL_IMAGE
-
+    # ---------------------
+    # DEPLOYMENT
+    # ---------------------
+    - echo "🚀 Deploy / Update $APP_NAME"
+    - oc get deploy $APP_NAME >/dev/null 2>&1 || oc create deployment $APP_NAME --image=$FULL_IMAGE
     - oc set image deploy/$APP_NAME $APP_NAME=$FULL_IMAGE
 
-    # ---- Secret (safe recreate)
-    - echo "🔐 Create email secret"
+    # ---- Create / Update Secret (SAFE, repeatable)
     - |
       oc delete secret email-secret --ignore-not-found
       oc create secret generic email-secret \
@@ -69,23 +59,29 @@ deploy:
         --from-literal=EMAIL_PASS="$EMAIL_PASS" \
         --from-literal=EMAIL_TO="$EMAIL_TO"
 
+    # ---- Inject env vars from secret
     - oc set env deploy/$APP_NAME --from=secret/email-secret
     - oc rollout restart deploy/$APP_NAME
     - oc rollout status deploy/$APP_NAME
 
-    # ---- Service
-    - echo "🔌 Ensure service"
-    - |
-      oc get svc $APP_NAME >/dev/null 2>&1 || \
-      oc create service clusterip $APP_NAME --tcp=$APP_PORT:$APP_PORT
+    # ---------------------
+    # SERVICE
+    # ---------------------
+    - echo "🔌 Create Service if missing"
+    - oc get svc $APP_NAME >/dev/null 2>&1 || oc create service clusterip $APP_NAME --tcp=$APP_PORT:$APP_PORT
 
-    # ---- Route
-    - echo "🌐 Ensure route"
-    - |
-      oc get route $APP_NAME >/dev/null 2>&1 || \
-      oc expose svc $APP_NAME --port=$APP_PORT
+    # ---------------------
+    # ROUTE
+    # ---------------------
+    - echo "🌐 Create Route if missing"
+    - oc get route $APP_NAME >/dev/null 2>&1 || oc expose svc $APP_NAME --port=$APP_PORT
 
+    # ---------------------
+    # DISPLAY OUTPUT
+    # ---------------------
     - echo "✅ Deployment completed"
     - echo "🌍 Application URL:"
     - oc get route $APP_NAME -o jsonpath='http://{.spec.host}'
     - echo ""
+  only:
+    - main
