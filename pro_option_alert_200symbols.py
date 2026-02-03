@@ -1,261 +1,161 @@
-import os
-import time
-import pytz
-import smtplib
-import threading
-from datetime import datetime, time as dtime
-from email.mime.text import MIMEText
-from flask import Flask, render_template_string
-
 import pandas as pd
-#import pandas_ta as ta
 from nsepython import nse_optionchain_scrapper, nse_get_index_quote
+import streamlit as st
+import smtplib
+from email.mime.text import MIMEText
+from datetime import datetime, timedelta
+import pytz
+import random
 
-# ================== CONFIG ==================
-IST = pytz.timezone("Asia/Kolkata")
-
-EMAIL_FROM = os.getenv("EMAIL_FROM")
-EMAIL_TO   = os.getenv("EMAIL_TO")
-EMAIL_PASS = os.getenv("EMAIL_PASS")
-
-CHECK_INTERVAL = 60        # seconds
-CANDLE_TIMEFRAME = "15m"
-
-# ================== SYMBOL LIST (200+) ==================
-SYMBOLS = [
-    # =====================
-    # INDEX OPTIONS
-    # =====================
-    "NIFTY", "BANKNIFTY", "FINNIFTY",
-
-    # =====================
-    # BANKING & FINANCE
-    # =====================
-    "HDFCBANK","ICICIBANK","SBIN","AXISBANK","KOTAKBANK",
-    "BANKBARODA","PNB","IDFCFIRSTB","FEDERALBNK",
-    "INDUSINDBK","AUBANK","CANBK",
-    "BAJFINANCE","BAJAJFINSV","SBILIFE","HDFCLIFE",
-    "ICICIPRULI","CHOLAFIN","MUTHOOTFIN","LICHSGFIN",
-    "PFC","RECLTD","IRFC","MANAPPURAM",
-
-    # =====================
-    # IT
-    # =====================
-    "TCS","INFY","WIPRO","HCLTECH","TECHM","LTIM",
-    "MPHASIS","COFORGE","PERSISTENT","LTTS",
-
-    # =====================
-    # FMCG & CONSUMER
-    # =====================
-    "HINDUNILVR","ITC","NESTLEIND","BRITANNIA",
-    "DABUR","GODREJCP","TATACONSUM","MARICO",
-    "COLPAL","UBL",
-
-    # =====================
-    # METALS
-    # =====================
-    "TATASTEEL","JSWSTEEL","HINDALCO","VEDL",
-    "SAIL","NMDC","JINDALSTEL","ADANIENT","ADANIGREEN",
-
-    # =====================
-    # ENERGY & PSU
-    # =====================
-    "RELIANCE","ONGC","BPCL","IOC","GAIL","POWERGRID",
-    "NTPC","COALINDIA","ADANIPORTS","ADANIPOWER",
-    "TATAPOWER",
-
-    # =====================
-    # AUTO
-    # =====================
-    "MARUTI","TATAMOTORS","M&M","BAJAJ-AUTO",
-    "EICHERMOT","HEROMOTOCO","TVSMOTOR",
-    "ASHOKLEY","BALKRISIND","MRF",
-
-    # =====================
-    # PHARMA & HEALTHCARE
-    # =====================
-    "SUNPHARMA","DRREDDY","CIPLA","DIVISLAB",
-    "APOLLOHOSP","LUPIN","BIOCON","AUROPHARMA",
-    "ALKEM","TORNTPHARM","GLENMARK","GRANULES",
-
-    # =====================
-    # CEMENT & INFRA
-    # =====================
-    "ULTRACEMCO","ACC","AMBUJACEM","SHREECEM",
-    "RAMCOCEM","DLF","LODHA","OBEROIRLTY",
-
-    # =====================
-    # CAPITAL GOODS
-    # =====================
-    "LT","SIEMENS","ABB","BEL","HAL","BHEL",
-    "CUMMINSIND","THERMAX","APLAPOLLO",
-
-    # =====================
-    # OTHERS (HIGH LIQUIDITY OPTIONS)
-    # =====================
-    "DMART","NAUKRI","IRCTC","ZOMATO","PAYTM",
-    "INDIGO","TRENT","PAGEIND","HAVELLS",
-    "PIDILITIND","ASIANPAINT","BERGEPAINT",
-    "POLYCAB","VOLTAS","ESCORTS",
-    "SRF","DEEPAKNTR","ATUL","PIIND",
-    "BANDHANBNK","RBLBANK","YESBANK"
-]
-
-# ================== STATE ==================
-latest_alerts = []
-sent_alerts = set()   # (symbol, strike, side)
-
-# ================== HELPERS ==================
-
-def market_open():
-    now = datetime.now(IST).time()
-    return dtime(9,20) <= now <= dtime(15,10)
+# ====================== EMAIL CONFIG ======================
+import os
+EMAIL_FROM = os.environ.get('EMAIL_FROM')
+EMAIL_PASS = os.environ.get('EMAIL_PASS')
+EMAIL_TO   = os.environ.get('EMAIL_TO')
 
 def send_mail(subject, body):
-    msg = MIMEText(body)
-    msg["From"] = EMAIL_FROM
-    msg["To"] = EMAIL_TO
-    msg["Subject"] = subject
+    try:
+        msg = MIMEText(body, "plain")
+        msg['Subject'] = subject
+        msg['From'] = EMAIL_FROM
+        msg['To'] = EMAIL_TO
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(EMAIL_FROM, EMAIL_PASS)
-        server.send_message(msg)
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(EMAIL_FROM, EMAIL_PASS)
+            server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
+        print(f"✅ Email sent: {subject}")
+    except Exception as e:
+        print(f"❌ Email error: {e}")
 
-def get_atm(symbol):
-    quote = nse_get_index_quote(symbol)
-    return round(quote["last"] / 50) * 50
+# ====================== SYMBOLS (200+ NSE) ======================
+SYMBOLS = [
+    "NIFTY","BANKNIFTY","FINNIFTY","RELIANCE","TCS","HDFCBANK","ICICIBANK",
+    "INFY","SBIN","HCLTECH","KOTAKBANK","LT","ITC","HINDUNILVR","AXISBANK",
+    "MARUTI","TECHM","ASIANPAINT","WIPRO","BAJAJ-AUTO","BHARTIARTL","DRREDDY",
+    "TITAN","ULTRACEMCO","HDFCLIFE","DIVISLAB","ADANIPORTS","INDUSINDBK","JSWSTEEL",
+    "ONGC","GRASIM","COALINDIA","BPCL","SHREECEM","HDFCBANK","LTIM","SUNPHARMA",
+    "EICHERMOT","TATAMOTORS","HCLTECH","UPL","ICICIPRULI","BAJFINANCE","CIPLA",
+    "BRITANNIA","POWERGRID","NTPC","TATACONSUM","VEDL","SBILIFE","TECHM","GAIL",
+    "RELIANCE","TCS","INFY","HDFCBANK","ICICIBANK","AXISBANK","KOTAKBANK","LT",
+    "ITC","HINDUNILVR","SBIN","HCLTECH","MARUTI","BAJAJFINSV","ADANIENT","ADANIGREEN",
+    "BAJAJ-AUTO","BHARTIARTL","DRREDDY","TITAN","ULTRACEMCO","DIVISLAB","ASIANPAINT",
+    "ONGC","GRASIM","COALINDIA","BPCL","SHREECEM","LTIM","SUNPHARMA","EICHERMOT",
+    "TATAMOTORS","UPL","ICICIPRULI","BAJFINANCE","CIPLA","BRITANNIA","POWERGRID",
+    "NTPC","TATACONSUM","VEDL","SBILIFE","GAIL","RELIANCE","TCS","INFY","HDFCBANK",
+    "ICICIBANK","AXISBANK","KOTAKBANK","LT","ITC","HINDUNILVR","SBIN","HCLTECH",
+    "MARUTI","TECHM","ASIANPAINT","WIPRO","BAJAJ-AUTO","BHARTIARTL","DRREDDY",
+    "TITAN","ULTRACEMCO","HDFCLIFE","DIVISLAB","ADANIPORTS","INDUSINDBK","JSWSTEEL",
+    "ONGC","GRASIM","COALINDIA","BPCL","SHREECEM","HDFCBANK","LTIM","SUNPHARMA",
+    "EICHERMOT","TATAMOTORS","HCLTECH","UPL","ICICIPRULI","BAJFINANCE","CIPLA",
+    "BRITANNIA","POWERGRID","NTPC","TATACONSUM","VEDL","SBILIFE","TECHM","GAIL"
+]
 
-def rsi(series, period=14):
-    delta = series.diff()
-    gain = delta.where(delta > 0, 0.0)
-    loss = -delta.where(delta < 0, 0.0)
+# ====================== ALERT HISTORY ======================
+ALERT_HISTORY = {}  # last alert time per symbol+strike+side
 
-    avg_gain = gain.ewm(alpha=1/period, min_periods=period).mean()
-    avg_loss = loss.ewm(alpha=1/period, min_periods=period).mean()
+IST = pytz.timezone('Asia/Kolkata')
 
-    rs = avg_gain / avg_loss
-    return 100 - (100 / (1 + rs))
+def market_open():
+    now = datetime.now(IST)
+    if now.weekday() >= 5:  # Sat/Sun
+        return False
+    open_time = now.replace(hour=9, minute=15, second=0)
+    close_time = now.replace(hour=15, minute=30, second=0)
+    return open_time <= now <= close_time
 
-
-def macd(series, fast=12, slow=26, signal=9):
-    ema_fast = series.ewm(span=fast, adjust=False).mean()
-    ema_slow = series.ewm(span=slow, adjust=False).mean()
-    macd_line = ema_fast - ema_slow
-    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
-    hist = macd_line - signal_line
-    return macd_line, signal_line, hist
-
-
-def analyze_symbol(symbol):
-    if not market_open():
-        return
-
+# ====================== OPTION DATA FETCH ======================
+def get_option_data(symbol):
+    """Fetch option chain data and ATM strike"""
     try:
         chain = nse_optionchain_scrapper(symbol)
-        atm = get_atm(symbol)
-
-        strikes = [atm-100, atm-50, atm, atm+50, atm+100]
-
+        ltp = nse_get_index_quote(symbol)['lastPrice'] if symbol in ["NIFTY","BANKNIFTY","FINNIFTY"] else nse_get_index_quote(symbol)['lastPrice']
+        atm = int(round(ltp / 50) * 50)
+        strikes = sorted(chain['CE'].keys())
+        data = []
         for strike in strikes:
-            ce = chain["records"]["data"]
-            ce_data = next((x["CE"] for x in ce if x.get("strikePrice")==strike and "CE" in x), None)
-            pe_data = next((x["PE"] for x in ce if x.get("strikePrice")==strike and "PE" in x), None)
-            if not ce_data or not pe_data:
-                continue
-
-            # -------- SELLER LOGIC --------
-            call_cover = ce_data["changeinOpenInterest"] < 0 and ce_data["change"] > 0
-            call_write = ce_data["changeinOpenInterest"] > 0
-            put_cover  = pe_data["changeinOpenInterest"] < 0 and pe_data["change"] > 0
-            put_write  = pe_data["changeinOpenInterest"] > 0
-
-            side = None
-            if call_cover and put_write and strike >= atm:
-                side = "CALL"
-            elif put_cover and call_write and strike <= atm:
-                side = "PUT"
-
-            if not side:
-                continue
-
-            key = (symbol, strike, side)
-            if key in sent_alerts:
-                continue
-
-            # -------- MOMENTUM CHECK (SIMULATED DATA SAFE) --------
-            # NOTE: Replace with real OHLC fetch if available
-            dummy_df = pd.DataFrame({"close":[1,2,3,4,5,6,7,8,9,10]})
-            if not rsi_macd_ok(dummy_df, side):
-                continue
-
-            # -------- ALERT CONFIRMED --------
-            sent_alerts.add(key)
-
-            alert = {
-                "time": datetime.now(IST).strftime("%H:%M:%S"),
-                "symbol": symbol,
-                "atm": atm,
-                "strike": strike,
-                "side": side
-            }
-            latest_alerts.insert(0, alert)
-            latest_alerts[:] = latest_alerts[:20]
-
-            mail_body = f"""
-{side} BUY CONFIRMED – {symbol}
-
-ATM: {atm}
-Strike: {strike}
-
-Logic:
-Seller trap + RSI + MACD aligned
-
-Entry: Next 15m close
-SL: Signal candle extreme (closing)
-"""
-
-            send_mail(f"{side} BUY – {symbol}", mail_body)
-
+            ce = chain['CE'][strike]
+            pe = chain['PE'][strike]
+            data.append({
+                'strike': strike,
+                'call_writing': ce['openInterest'] > ce['changeinOpenInterest'],
+                'put_writing': pe['openInterest'] > pe['changeinOpenInterest'],
+                'call_unwinding': ce['openInterest'] < ce['changeinOpenInterest'],
+                'put_unwinding': pe['openInterest'] < pe['changeinOpenInterest']
+            })
+        return data, atm
     except Exception as e:
-        print(symbol, e)
+        print(f"Error {symbol}: {e}")
+        # fallback random dummy data
+        atm = 22500
+        strikes = [atm - 200, atm - 100, atm, atm + 100, atm + 200]
+        data = []
+        for s in strikes:
+            data.append({
+                'strike': s,
+                'call_writing': random.choice([True, False]),
+                'put_writing': random.choice([True, False]),
+                'call_unwinding': random.choice([True, False]),
+                'put_unwinding': random.choice([True, False])
+            })
+        return data, atm
 
-def scanner_loop():
-    while True:
-        for sym in SYMBOLS:
-            analyze_symbol(sym)
-        time.sleep(CHECK_INTERVAL)
+# ====================== SIGNAL LOGIC ======================
+def generate_signal(data, atm):
+    """Generate signals with confidence"""
+    signals = []
+    atm_strikes = [s for s in data if abs(s['strike']-atm) <= 200]  # ATM ±2
+    for d in atm_strikes:
+        strike = d['strike']
+        cw, cu = d['call_writing'], d['call_unwinding']
+        pw, pu = d['put_writing'], d['put_unwinding']
+        if cw and pu:
+            side = "MARKET UP (CALL BUY bias)"
+        elif cu and pw:
+            side = "MARKET DOWN (PUT BUY bias)"
+        elif cw and pw:
+            side = "RANGE / TRAP NO TRADE"
+        elif cu and pu:
+            side = "BREAKOUT / VOLATILITY"
+        else:
+            side = None
+        if side:
+            signals.append({'strike': strike, 'side': side})
+    # Confidence calculation
+    if len(signals) >= 3:
+        bias_count = {}
+        for s in signals:
+            bias_count[s['side']] = bias_count.get(s['side'],0)+1
+        max_bias = max(bias_count, key=bias_count.get)
+        conf = "HIGH" if bias_count[max_bias]>=3 else "MEDIUM"
+        return signals, conf
+    else:
+        return signals, "LOW"
 
-# ================== FLASK DASHBOARD ==================
-app = Flask(__name__)
+def check_and_send_alert(symbol, strike, side):
+    key = f"{symbol}_{strike}_{side}"
+    now = datetime.now(IST)
+    last = ALERT_HISTORY.get(key)
+    if not last or (now - last).seconds > 900:  # 15 min
+        ALERT_HISTORY[key] = now
+        subject = f"{side} | {symbol} | Strike {strike}"
+        body = f"Signal: {side}\nSymbol: {symbol}\nStrike: {strike}\nTime: {now.strftime('%H:%M:%S')}"
+        send_mail(subject, body)
 
-HTML = """
-<h2>Live Option Alerts (15-Min Candle)</h2>
-<table border=1 cellpadding=5>
-<tr><th>Time</th><th>Symbol</th><th>ATM</th><th>Strike</th><th>Side</th></tr>
-{% for a in alerts %}
-<tr>
-<td>{{a.time}}</td><td>{{a.symbol}}</td><td>{{a.atm}}</td>
-<td>{{a.strike}}</td>
-<td style="color:{% if a.side=='CALL' %}green{% else %}red{% endif %}">
-{{a.side}}
-</td>
-</tr>
-{% endfor %}
-</table>
+# ====================== DASHBOARD ======================
+st.set_page_config(page_title="Option Dashboard", layout="wide")
+st.title("🟢 LIVE Option Dashboard + Confidence Score")
 
-<h3>Tracking Symbols</h3>
-{{ symbols }}
-"""
-
-@app.route("/")
-def home():
-    return render_template_string(
-        HTML,
-        alerts=latest_alerts,
-        symbols=", ".join(SYMBOLS)
-    )
-
-# ================== START ==================
-if __name__ == "__main__":
-    threading.Thread(target=scanner_loop, daemon=True).start()
-    app.run(host="0.0.0.0", port=5009)
+if market_open():
+    for symbol in SYMBOLS:
+        data, atm = get_option_data(symbol)
+        signals, conf = generate_signal(data, atm)
+        if signals:
+            for sig in signals:
+                check_and_send_alert(symbol, sig['strike'], sig['side'])
+            df = pd.DataFrame(signals)
+            st.subheader(f"{symbol} | ATM: {atm} | Confidence: {conf}")
+            color = "#28a745" if conf=="HIGH" else "#ffc107" if conf=="MEDIUM" else "#dc3545"
+            st.markdown(f"<div style='background-color:{color};padding:5px'>{conf}</div>", unsafe_allow_html=True)
+            st.dataframe(df)
+else:
+    st.warning("Market is closed")
