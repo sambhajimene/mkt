@@ -1,39 +1,22 @@
-# config.py
-
-# -----------------------------
-# MARKET SETTINGS
-# -----------------------------
+# ===== MARKET CONFIG =====
 TIMEZONE = "Asia/Kolkata"
-
-MARKET_OPEN = (9, 15)
-MARKET_CLOSE = (15, 30)
-
 REFRESH_MINUTES = 10
 
-# -----------------------------
-# OPTION SETTINGS
-# -----------------------------
-ATM_RANGE = 2          # ATM ±2
-MIN_CONFIDENCE = 60    # % to show / alert
+# ===== INDICES =====
+INDEX_SYMBOLS = ["NIFTY", "BANKNIFTY"]
 
-# -----------------------------
-# SYMBOL LIST (START SMALL)
-# -----------------------------
-INDEX_SYMBOLS = [
-    "NIFTY",
-    "BANKNIFTY",
-    "FINNIFTY"
+# ===== F&O STOCKS (NSE official list – expandable) =====
+FNO_STOCKS = [
+    "RELIANCE","TCS","INFY","HDFCBANK","ICICIBANK","SBIN","LT","HCLTECH",
+    "KOTAKBANK","AXISBANK","ITC","MARUTI","ONGC","POWERGRID","BHARTIARTL"
 ]
 
-STOCK_SYMBOLS = [
-    "RELIANCE",
-    "TCS",
-    "INFY",
-    "HDFCBANK",
-    "ICICIBANK",
-    "SBIN",
-    "LT",
-    "HCLTECH"
-]
+# ===== EMAIL CONFIG =====
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+EMAIL_FROM = "yourmail@gmail.com"
+EMAIL_PASSWORD = "your_app_password"
+EMAIL_TO = ["yourmail@gmail.com"]
 
-ALL_SYMBOLS = INDEX_SYMBOLS + STOCK_SYMBOLS
+# ===== ALERT CONTROL =====
+MIN_CONFIDENCE = 60   # %

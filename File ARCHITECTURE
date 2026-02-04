@@ -1,0 +1,10 @@
+/app
+ ├── main.py                # Streamlit dashboard (entrypoint)
+ ├── nse_client.py          # NSE session + headers
+ ├── option_chain.py        # Real option chain fetch (Index + Stocks)
+ ├── seller_logic.py        # Seller logic (your rules)
+ ├── confidence.py          # Confidence score + bias decision
+ ├── alerts.py              # Email alerts + de-dup
+ ├── config.py              # Symbols, email, settings
+ ├── requirements.txt
+ └── Dockerfile

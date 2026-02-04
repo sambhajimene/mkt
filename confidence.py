@@ -1,5 +1,7 @@
-# confidence.py
+from collections import Counter
+
 def confidence_score(bias_list):
-    dominant = max(set(bias_list), key=bias_list.count)
-    score = int((bias_list.count(dominant) / len(bias_list)) * 100)
-    return dominant, score
+    count = Counter(bias_list)
+    bias, hits = count.most_common(1)[0]
+    score = int((hits / len(bias_list)) * 100)
+    return bias, score
