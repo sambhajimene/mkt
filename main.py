@@ -12,9 +12,17 @@ tz = pytz.timezone(TIMEZONE)
 
 st.set_page_config(layout="wide")
 st.title("📊 NSE Seller Advisor – High Confidence Only")
-
-st.button("📧 TEST EMAIL", on_click=lambda:
-    send_email("TEST EMAIL", "Email system working"))
+#============================test button=================================
+if st.button("📧 Test Mail"):
+    try:
+        send_email(
+            "TEST EMAIL – Seller Advisor",
+            "Email system working ✅"
+        )
+        st.success("✅ Test mail sent successfully")
+    except Exception as e:
+        st.error(f"❌ Mail failed: {e}")
+#===========================================================================
 
 symbols = INDEX_SYMBOLS + FNO_STOCKS
 table = []
