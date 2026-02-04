@@ -1,45 +1,48 @@
-# ----------------------------
-# Step 1: Base image
-# ----------------------------
+# -------------------------------
+# Base Image (stable + compatible)
+# -------------------------------
     FROM python:3.10-slim
 
-    # ----------------------------
-    # Step 2: Set working directory
-    # ----------------------------
+    # -------------------------------
+    # Environment settings
+    # -------------------------------
+    ENV PYTHONDONTWRITEBYTECODE=1
+    ENV PYTHONUNBUFFERED=1
+    
+    # -------------------------------
+    # System dependencies
+    # -------------------------------
+    RUN apt-get update && apt-get install -y \
+        curl \
+        ca-certificates \
+        build-essential \
+        && rm -rf /var/lib/apt/lists/*
+    
+    # -------------------------------
+    # Work directory
+    # -------------------------------
     WORKDIR /app
     
-    # ----------------------------
-    # Step 3: Copy requirements and install
-    # ----------------------------
+    # -------------------------------
+    # Copy requirements first (cache)
+    # -------------------------------
     COPY requirements.txt .
+    
     RUN pip install --no-cache-dir --upgrade pip \
         && pip install --no-cache-dir -r requirements.txt
     
-    # ----------------------------
-    # Step 4: Copy Python code
-    # ----------------------------
-    COPY pro_option_alert_200symbols.py .
+    # -------------------------------
+    # Copy project files
+    # -------------------------------
+    COPY . .
     
-    # ----------------------------
-    # Step 5: Set environment variables
-    # ----------------------------
-    ENV STREAMLIT_SERVER_PORT=5009
-    ENV STREAMLIT_SERVER_HEADLESS=true
-    ENV STREAMLIT_SERVER_ENABLECORS=false
-    ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
-    
-    # Email secrets (use OpenShift secret in Deployment)
-    # ENV EMAIL_FROM=your_email@gmail.com
-    # ENV EMAIL_PASS=your_app_password
-    # ENV EMAIL_TO=receiver_email@gmail.com
-    
-    # ----------------------------
-    # Step 6: Expose port
-    # ----------------------------
+    # -------------------------------
+    # Streamlit port
+    # -------------------------------
     EXPOSE 5009
     
-    # ----------------------------
-    # Step 7: Run Streamlit
-    # ----------------------------
-    CMD ["streamlit", "run", "pro_option_alert_200symbols.py", "--server.port", "5009"]
+    # -------------------------------
+    # Run Streamlit
+    # -------------------------------
+    CMD ["streamlit", "run", "main.py", "--server.port=5009", "--server.address=0.0.0.0"]
     
