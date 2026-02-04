@@ -49,7 +49,7 @@ if st.sidebar.checkbox("Show Live Option Chain"):
         st.error(f"❌ Error fetching option chain: {e}")
 #===========================================================================
 
-symbols = INDEX_SYMBOLS + FNO_STOCKS
+symbols = INDEX_SYMBOLS + FNO_SYMBOLS
 table = []
 
 for sym in symbols:
