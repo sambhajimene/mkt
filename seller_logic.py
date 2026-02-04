@@ -30,7 +30,7 @@ def analyze_strike(strike):
     if ce_change > 0 and pe_change < 0:
         return "MARKET DOWN (PUT BUY)"
     if ce_change < 0 and pe_change > 0:
-        return "MMARKET UP (CALL BUY)"
+        return "MARKET UP (CALL BUY)"
     if ce_change > 0 and pe_change > 0:
         return "RANGE / TRAP"
     if ce_change < 0 and pe_change < 0:
