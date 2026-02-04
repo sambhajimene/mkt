@@ -28,12 +28,12 @@ def analyze_strike(strike):
     pe_change = pe["changeinOpenInterest"]
 
     if ce_change > 0 and pe_change < 0:
-        return "MARKET DOWN"
+        return "MARKET DOWN (PUT BUY)"
     if ce_change < 0 and pe_change > 0:
-        return "MARKET UP"
+        return "MMARKET UP (CALL BUY)"
     if ce_change > 0 and pe_change > 0:
-        return "RANGE"
+        return "RANGE / TRAP"
     if ce_change < 0 and pe_change < 0:
-        return "VOLATILITY"
+        return "BREAKOUT / VOLATILITY"
 
-    return "NEUTRAL"
+    return "NO TRADE"
