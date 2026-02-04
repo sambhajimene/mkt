@@ -1,62 +1,175 @@
+# ==============================
 # main.py
-from datetime import datetime
-import streamlit as st
-from config import *
-from nse_data import get_option_chain
-from seller_logic import classify_strike, seller_bias
-from confidence import confidence_score
-from alert_manager import can_alert, send_mail
-from dashboard import render
-import pytz
+# Seller Advisor – REAL NSE DATA
+# ==============================
 
-def market_open():
-    now = datetime.now(TIMEZONE).time()
+import streamlit as st
+import pandas as pd
+import pytz
+from datetime import datetime, time
+from nsepython import nse_optionchain_scrapper
+
+# ==============================
+# CONFIG
+# ==============================
+
+TIMEZONE = pytz.timezone("Asia/Kolkata")
+
+MARKET_OPEN = time(9, 15)
+MARKET_CLOSE = time(15, 30)
+
+REFRESH_SECONDS = 600  # 10 min
+
+SYMBOLS = [
+    "NIFTY",
+    "BANKNIFTY",
+    "FINNIFTY",
+    "RELIANCE",
+    "TCS",
+    "INFY",
+    "HDFCBANK",
+    "ICICIBANK",
+    "SBIN",
+    "HCLTECH",
+    "LT"
+]
+
+# ==============================
+# TIME FUNCTIONS
+# ==============================
+
+def ist_now():
+    return datetime.now(TIMEZONE)
+
+def is_market_open():
+    now = ist_now().time()
     return MARKET_OPEN <= now <= MARKET_CLOSE
 
+# ==============================
+# NSE OPTION DATA (REAL)
+# ==============================
 
-results = []
+def get_option_data(symbol):
+    """
+    Fetch ATM strike + OI change for CE & PE
+    """
+    try:
+        data = nse_optionchain_scrapper(symbol)
 
-if market_open():
-    for symbol in ALL_SYMBOLS:
-        try:
-            data = get_option_chain(symbol)
-            records = data["records"]["data"]
+        spot = data["records"]["underlyingValue"]
 
-            strikes = records[len(records)//2 - 2 : len(records)//2 + 3]
-            bias_list = []
+        strikes = sorted(
+            set(item["strikePrice"] for item in data["records"]["data"])
+        )
 
-            for s in strikes:
-                ce = s.get("CE")
-                pe = s.get("PE")
-                if not ce or not pe:
-                    continue
+        atm = min(strikes, key=lambda x: abs(x - spot))
 
-                call = classify_strike(
-                    ce["previousOpenInterest"], ce["openInterest"]
-                )
-                put = classify_strike(
-                    pe["previousOpenInterest"], pe["openInterest"]
-                )
+        ce_oi = pe_oi = 0
 
-                bias_list.append(seller_bias(call, put))
+        for item in data["records"]["data"]:
+            if item["strikePrice"] == atm:
+                if "CE" in item:
+                    ce_oi = item["CE"]["changeinOpenInterest"]
+                if "PE" in item:
+                    pe_oi = item["PE"]["changeinOpenInterest"]
 
-            dominant, score = confidence_score(bias_list)
+        return atm, ce_oi, pe_oi
 
-            threshold = INDEX_CONFIDENCE if symbol in INDEX_SYMBOLS else STOCK_CONFIDENCE
-            if score >= threshold:
-                results.append({
-                    "symbol": symbol,
-                    "bias": dominant,
-                    "confidence": score
-                })
+    except Exception as e:
+        return None, None, None
 
-                if can_alert(symbol, "ATM", dominant):
-                    send_mail(
-                        f"HIGH CONFIDENCE – {dominant}",
-                        f"{symbol}\nConfidence: {score}%"
-                    )
+# ==============================
+# SELLER LOGIC (GOLD)
+# ==============================
 
-        except Exception:
-            pass
+def seller_bias(ce_oi, pe_oi):
+    if ce_oi is None or pe_oi is None:
+        return None, None
 
-render(results)
+    # CALL Writing + PUT Unwinding
+    if ce_oi > 0 and pe_oi < 0:
+        return "MARKET DOWN (PUT BUY bias)", "🔴"
+
+    # CALL Unwinding + PUT Writing
+    if ce_oi < 0 and pe_oi > 0:
+        return "MARKET UP (CALL BUY bias)", "🟢"
+
+    # Both Writing
+    if ce_oi > 0 and pe_oi > 0:
+        return "RANGE / TRAP – NO TRADE", "🟠"
+
+    # Both Unwinding
+    if ce_oi < 0 and pe_oi < 0:
+        return "BREAKOUT / VOLATILITY", "🟣"
+
+    return "NO CLEAR EDGE", "⚪"
+
+# ==============================
+# STREAMLIT UI
+# ==============================
+
+st.set_page_config("Seller Advisor – NSE Options", layout="wide")
+
+st.title("📊 Seller Advisor – REAL NSE Option Chain")
+
+st.caption(f"🕒 IST Time: {ist_now().strftime('%d-%b-%Y %H:%M:%S')}")
+
+if not is_market_open():
+    st.warning("🚫 Market Closed (IST)")
+    st.stop()
+
+st.success("✅ Market Live")
+
+st.caption("🔄 Auto refresh every 10 minutes")
+
+# ==============================
+# DASHBOARD TABLE
+# ==============================
+
+rows = []
+
+for symbol in SYMBOLS:
+    atm, ce_oi, pe_oi = get_option_data(symbol)
+
+    signal, emoji = seller_bias(ce_oi, pe_oi)
+
+    if signal is None:
+        continue  # NSE data not available
+
+    rows.append({
+        "Symbol": symbol,
+        "ATM Strike": atm,
+        "CALL OI Δ": ce_oi,
+        "PUT OI Δ": pe_oi,
+        "Signal": f"{emoji} {signal}"
+    })
+
+df = pd.DataFrame(rows)
+
+if df.empty:
+    st.error("❌ NSE data not available right now")
+else:
+    st.dataframe(df, use_container_width=True)
+
+# ==============================
+# CONFIDENCE SCORE
+# ==============================
+
+if not df.empty:
+    signals = df["Signal"].tolist()
+    dominant = max(set(signals), key=signals.count)
+    score = int((signals.count(dominant) / len(signals)) * 100)
+
+    st.subheader("📈 Confidence Meter")
+    st.progress(score)
+
+    if score >= 60:
+        st.success(f"🔥 HIGH CONFIDENCE: {score}%")
+    else:
+        st.info(f"⚠️ LOW CONFIDENCE: {score}% – WAIT")
+
+# ==============================
+# FOOTER
+# ==============================
+
+st.caption("Seller logic based on REAL OI change | ATM focused")
