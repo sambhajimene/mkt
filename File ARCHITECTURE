@@ -1,10 +1,11 @@
-/app
- ├── main.py                # Streamlit dashboard (entrypoint)
- ├── NSE_client.py          # NSE session + headers
- ├── option_chain.py        # Real option chain fetch (Index + Stocks)
- ├── seller_logic.py        # Seller logic (your rules)
- ├── confidence.py          # Confidence score + bias decision
- ├── alerts.py              # Email alerts + de-dup
- ├── config.py              # Symbols, email, settings
- ├── requirements.txt
- └── Dockerfile
+fyers_client.py → APIv3 compatible, token-based
+
+option_chain.py → dynamic CE/PE strike fetch ±5 strikes
+
+seller_logic.py → seller bias calculation
+
+confidence.py → confidence scoring
+
+alerts.py → email + repeated alert prevention
+
+main.py → fully Streamlit + OpenShift + auto-refresh + sidebar + LOC + alerts

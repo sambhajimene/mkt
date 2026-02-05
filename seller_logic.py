@@ -1,33 +1,18 @@
 # seller_logic.py
+def analyze_strike(strike):
+    ce = strike["CE"]
+    pe = strike["PE"]
 
-def analyze_option_chain(df):
-    alerts = []
+    ce_change = ce["changeinOpenInterest"]
+    pe_change = pe["changeinOpenInterest"]
 
-    if df.empty:
-        return alerts
+    if ce_change > 0 and pe_change < 0:
+        return "MARKET DOWN (PUT BUY)"
+    if ce_change < 0 and pe_change > 0:
+        return "MARKET UP (CALL BUY)"
+    if ce_change > 0 and pe_change > 0:
+        return "RANGE / TRAP"
+    if ce_change < 0 and pe_change < 0:
+        return "BREAKOUT / VOLATILITY"
 
-    atm_index = len(df) // 2
-    atm_strike = df.iloc[atm_index]["strike"]
-
-    for _, r in df.iterrows():
-        ce = r["ce_chg_oi"]
-        pe = r["pe_chg_oi"]
-
-        if ce > 0 and pe < 0:
-            bias = "MARKET DOWN (PUT BUY)"
-        elif ce < 0 and pe > 0:
-            bias = "MARKET UP (CALL BUY)"
-        elif ce > 0 and pe > 0:
-            bias = "RANGE / TRAP"
-        elif ce < 0 and pe < 0:
-            bias = "BREAKOUT / VOLATILITY"
-        else:
-            continue
-
-        alerts.append({
-            "strike": r["strike"],
-            "atm": atm_strike,
-            "bias": bias
-        })
-
-    return alerts
+    return "NO TRADE"
