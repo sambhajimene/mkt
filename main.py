@@ -88,6 +88,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 from config import FNO_SYMBOLS, TIMEZONE
 from alerts import send_email, should_alert
+from option_chain import test_nse_connectivity
 from option_chain import get_option_chain
 #from seller_logic import evaluate_seller
 from seller_logic import analyze_strike
@@ -103,12 +104,31 @@ st.title("🚀 Dashboard (High-Confidence Alerts)")
 # -------------------
 # Mail Test Button
 # -------------------
-if st.sidebar.button("📧 Test Email"):
-    try:
+# if st.sidebar.button("📧 Test Email"):
+#     try:
+#         send_email("TEST EMAIL", "Email system working ✅")
+#         st.success("✅ Test Email sent successfully")
+#     except Exception as e:
+#         st.error(f"❌ Email failed: {e}")
+#--------------------------
+# NSE connectivity Button
+#--------------------------
+st.subheader("🔌 System Health Checks")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("📧 Test Email"):
         send_email("TEST EMAIL", "Email system working ✅")
-        st.success("✅ Test Email sent successfully")
-    except Exception as e:
-        st.error(f"❌ Email failed: {e}")
+        st.success("Email sent successfully")
+
+with col2:
+    if st.button("📡 Test NSE Connectivity"):
+        ok, msg = test_nse_connectivity()
+        if ok:
+            st.success(msg)
+        else:
+            st.error(f"NSE issue: {msg}")
 
 # -------------------
 # Live Option Chain Tab

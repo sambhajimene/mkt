@@ -19,3 +19,27 @@ def get_option_chain(symbol, is_index=False):
     atm_block = strikes[:5]   # ATM ±2
 
     return spot, atm_block
+#===================================================================================================
+def test_nse_connectivity():
+    """
+    Test NSE connectivity + option chain availability
+    """
+    try:
+        session = init_nse_session()
+
+        url = "https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY"
+        r = session.get(url, headers=HEADERS, timeout=5)
+
+        if r.status_code != 200:
+            return False, f"HTTP {r.status_code}"
+
+        data = r.json()
+
+        if "records" not in data:
+            return False, "Connected but option chain blocked (no records)"
+
+        rows = len(data["records"].get("data", []))
+        return True, f"Connected ✅ | Rows: {rows}"
+
+    except Exception as e:
+        return False, str(e)
