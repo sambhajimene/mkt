@@ -11,7 +11,7 @@ from alerts import send_email, should_alert
 tz = pytz.timezone(TIMEZONE)
 
 st.set_page_config(layout="wide")
-st.title("📊 NSE Seller Advisor – High Confidence Only")
+st.title("High Confidence Only")
 #============================test button=================================
 if st.button("📧 Test Mail"):
     try:
