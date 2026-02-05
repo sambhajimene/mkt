@@ -89,7 +89,8 @@ import pandas as pd
 from config import FNO_SYMBOLS, TIMEZONE
 from alerts import send_email, should_alert
 from option_chain import get_option_chain
-from seller_logic import evaluate_seller
+#from seller_logic import evaluate_seller
+from seller_logic import analyze_strike
 from confidence import compute_confidence
 
 # -------------------
