@@ -92,7 +92,7 @@ from option_chain import get_option_chain
 #from seller_logic import evaluate_seller
 from seller_logic import analyze_strike
 #from confidence import compute_confidence
-rom confidence import confidence_score
+from confidence import confidence_score
 
 # -------------------
 # Streamlit Page Setup
