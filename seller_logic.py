@@ -1,40 +1,33 @@
-# # seller_logic.py
+# seller_logic.py
 
-# def classify_strike(prev_oi, curr_oi):
-#     if curr_oi > prev_oi:
-#         return "WRITING"
-#     elif curr_oi < prev_oi:
-#         return "UNWINDING"
-#     else:
-#         return "NEUTRAL"
+def analyze_option_chain(df):
+    alerts = []
 
+    if df.empty:
+        return alerts
 
-# def seller_bias(call_status, put_status):
-#     if call_status == "WRITING" and put_status == "UNWINDING":
-#         return "MARKET DOWN (PUT BUY)"
-#     if call_status == "UNWINDING" and put_status == "WRITING":
-#         return "MARKET UP (CALL BUY)"
-#     if call_status == "WRITING" and put_status == "WRITING":
-#         return "RANGE / TRAP"
-#     if call_status == "UNWINDING" and put_status == "UNWINDING":
-#         return "BREAKOUT / VOLATILITY"
-#     return "NO TRADE"
-######===========================================
-def analyze_strike(strike):
-#def evaluate_seller(strike):
-    ce = strike["CE"]
-    pe = strike["PE"]
+    atm_index = len(df) // 2
+    atm_strike = df.iloc[atm_index]["strike"]
 
-    ce_change = ce["changeinOpenInterest"]
-    pe_change = pe["changeinOpenInterest"]
+    for _, r in df.iterrows():
+        ce = r["ce_chg_oi"]
+        pe = r["pe_chg_oi"]
 
-    if ce_change > 0 and pe_change < 0:
-        return "MARKET DOWN (PUT BUY)"
-    if ce_change < 0 and pe_change > 0:
-        return "MARKET UP (CALL BUY)"
-    if ce_change > 0 and pe_change > 0:
-        return "RANGE / TRAP"
-    if ce_change < 0 and pe_change < 0:
-        return "BREAKOUT / VOLATILITY"
+        if ce > 0 and pe < 0:
+            bias = "MARKET DOWN (PUT BUY)"
+        elif ce < 0 and pe > 0:
+            bias = "MARKET UP (CALL BUY)"
+        elif ce > 0 and pe > 0:
+            bias = "RANGE / TRAP"
+        elif ce < 0 and pe < 0:
+            bias = "BREAKOUT / VOLATILITY"
+        else:
+            continue
 
-    return "NO TRADE"
+        alerts.append({
+            "strike": r["strike"],
+            "atm": atm_strike,
+            "bias": bias
+        })
+
+    return alerts

@@ -1,80 +1,39 @@
-# from nse_client import NSEClient
+# option_chain.py
+import pandas as pd
+from NSE_client import NSEClient
 
-# client = NSEClient()
+nse = NSEClient()
 
-# def get_option_chain(symbol, is_index=False):
-#     if is_index:
-#         url = f"https://www.nseindia.com/api/option-chain-indices?symbol={symbol}"
-#     else:
-#         url = f"https://www.nseindia.com/api/option-chain-equities?symbol={symbol}"
+INDEX_SYMBOLS = ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY"]
 
-#     data = client.get(url)
-#     records = data["records"]
-#     spot = records["underlyingValue"]
-
-#     strikes = records["data"]
-#     strikes = [s for s in strikes if s.get("CE") and s.get("PE")]
-
-#     strikes.sort(key=lambda x: abs(x["strikePrice"] - spot))
-#     atm_block = strikes[:5]   # ATM ±2
-
-#     return spot, atm_block
-# #===================================================================================================
-# def test_nse_connectivity():
-#     """
-#     Test NSE connectivity + option chain availability
-#     """
-#     try:
-#         session = init_nse_session()
-
-#         url = "https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY"
-#         r = session.get(url, headers=HEADERS, timeout=5)
-
-#         if r.status_code != 200:
-#             return False, f"HTTP {r.status_code}"
-
-#         data = r.json()
-
-#         if "records" not in data:
-#             return False, "Connected but option chain blocked (no records)"
-
-#         rows = len(data["records"].get("data", []))
-#         return True, f"Connected ✅ | Rows: {rows}"
-
-#     except Exception as e:
-#         return False, str(e)
-#===============================================================
 def test_nse_connectivity(symbol="NIFTY"):
-    """
-    Test NSE connectivity + option chain availability
-    Works for INDEX + STOCK
-    """
     try:
-        session = init_nse_session()
-
-        if symbol in ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY"]:
-            url = f"https://www.nseindia.com/api/option-chain-indices?symbol={symbol}"
-        else:
-            url = f"https://www.nseindia.com/api/option-chain-equities?symbol={symbol}"
-
-        r = session.get(url, headers=HEADERS, timeout=8)
-
-        if r.status_code != 200:
-            return False, f"NSE HTTP {r.status_code}"
-
-        data = r.json()
-
-        # 🔴 This is where your earlier error came from
-        if not isinstance(data, dict) or "records" not in data:
-            return False, "Connected but option chain blocked by NSE"
-
-        records = data.get("records", {})
-        rows = len(records.get("data", []))
-
-        if rows == 0:
-            return False, "Connected but empty option chain"
-
-        return True, f"NSE Connected ✅ | {symbol} | Rows: {rows}"
-
+        _ = get_option_chain(symbol)
+        return True, f"NSE Connected ✅ | {symbol}"
     except Exception as e:
-        return False, f"NSE Error: {e}"
+        return False, str(e)
+
+
+def get_option_chain(symbol):
+    if symbol in INDEX_SYMBOLS:
+        url = f"https://www.nseindia.com/api/option-chain-indices?symbol={symbol}"
+    else:
+        url = f"https://www.nseindia.com/api/option-chain-equities?symbol={symbol}"
+
+    data = nse.get_json(url)
+
+    if "records" not in data or "data" not in data["records"]:
+        raise Exception("Option chain blocked (records missing)")
+
+    rows = []
+    for row in data["records"]["data"]:
+        if "CE" in row and "PE" in row:
+            rows.append({
+                "strike": row["strikePrice"],
+                "ce_oi": row["CE"]["openInterest"],
+                "ce_chg_oi": row["CE"]["changeinOpenInterest"],
+                "pe_oi": row["PE"]["openInterest"],
+                "pe_chg_oi": row["PE"]["changeinOpenInterest"],
+            })
+
+    return pd.DataFrame(rows)
