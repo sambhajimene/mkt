@@ -20,7 +20,8 @@
 #         return "BREAKOUT / VOLATILITY"
 #     return "NO TRADE"
 ######===========================================
-def analyze_strike(strike):
+#def analyze_strike(strike):
+ def evaluate_seller(strike):
     ce = strike["CE"]
     pe = strike["PE"]
 
