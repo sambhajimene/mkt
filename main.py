@@ -111,7 +111,7 @@ st.title("🚀 Dashboard (High-Confidence Alerts)")
 #     except Exception as e:
 #         st.error(f"❌ Email failed: {e}")
 #--------------------------
-# NSE connectivity Button
+# NSE connectivity & Mail Test Button
 #--------------------------
 st.subheader("🔌 System Health Checks")
 
