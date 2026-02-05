@@ -97,8 +97,8 @@ from confidence import confidence_score
 # -------------------
 # Streamlit Page Setup
 # -------------------
-st.set_page_config(page_title="📊 Seller Advisor Dashboard", layout="wide")
-st.title("🚀 Seller Advisor Dashboard (High-Confidence Alerts)")
+st.set_page_config(page_title=" Dashboard", layout="wide")
+st.title("🚀 Dashboard (High-Confidence Alerts)")
 
 # -------------------
 # Mail Test Button
@@ -113,8 +113,8 @@ if st.sidebar.button("📧 Test Email"):
 # -------------------
 # Live Option Chain Tab
 # -------------------
-st.sidebar.markdown("## 🟢 Live Option Chain")
-if st.sidebar.checkbox("Show Live Option Chain"):
+st.sidebar.markdown("## 🟢 LOC")
+if st.sidebar.checkbox("Show LOC"):
     symbol = st.sidebar.selectbox("Select Symbol", FNO_SYMBOLS)
     refresh_minutes = st.sidebar.number_input("Refresh interval (minutes)", 1, 30, 5)
     st.info(f"Fetching live option chain for {symbol}... ⏳")
