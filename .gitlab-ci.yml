@@ -74,10 +74,8 @@ deploy:
     # ROUTE
     # ---------------------
     - echo "🌐 Create Route if missing"
-    #- oc get route $APP_NAME >/dev/null 2>&1 || oc expose svc $APP_NAME --port=$APP_PORT --tls-termination=edge --insecure-policy=Redirect
-    - oc create route edge "$APP_NAME" \
-        --port="$APP_PORT" \
-        --insecure-policy=Redirect
+    - oc get route $APP_NAME >/dev/null 2>&1 || oc expose svc $APP_NAME --port=$APP_PORT --tls-termination=edge
+ 
     # ---------------------
     # DISPLAY OUTPUT
     # ---------------------
