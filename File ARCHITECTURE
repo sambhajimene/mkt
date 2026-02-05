@@ -9,3 +9,5 @@ confidence.py → confidence scoring
 alerts.py → email + repeated alert prevention
 
 main.py → fully Streamlit + OpenShift + auto-refresh + sidebar + LOC + alerts
+
+config.py
