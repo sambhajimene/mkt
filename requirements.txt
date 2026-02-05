@@ -1,5 +1,6 @@
 streamlit==1.26.0
 pandas==2.2.1
-fyers-apiv3==1.0.0
+fyers-apiv3>=3.1.0
 numpy==1.26.2
 requests==2.31.0
+
