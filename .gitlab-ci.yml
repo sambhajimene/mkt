@@ -6,7 +6,7 @@ variables:
   IMAGE_TAG: latest
   IMAGE_NAME: quay.io/sambhajimene/mk
   FULL_IMAGE: $IMAGE_NAME:$IMAGE_TAG
-  OPENSHIFT_PROJECT: sambhajimene-dev
+  OPENSHIFT_PROJECT: menesambhaji-dev
   APP_NAME: mk
   APP_PORT: 5009
 
