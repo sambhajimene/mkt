@@ -4,7 +4,7 @@ stages:
 
 variables:
   IMAGE_TAG: latest
-  IMAGE_NAME: quay.io/sambhajimene/mk
+  IMAGE_NAME: quay.io/menesambhaji/mk
   FULL_IMAGE: $IMAGE_NAME:$IMAGE_TAG
   OPENSHIFT_PROJECT: menesambhaji-dev
   APP_NAME: mk
