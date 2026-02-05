@@ -73,9 +73,19 @@ deploy:
     # ---------------------
     # ROUTE
     # ---------------------
+    # - echo "🌐 Create Route if missing"
+    # - oc create route edge "$APP_NAME" --service=mk --port="$APP_PORT" --insecure-policy=Redirect
+    # ---------------------
+    # ROUTE
+    # ---------------------
     - echo "🌐 Create Route if missing"
-    - oc create route edge "$APP_NAME" --service=mk --port="$APP_PORT" --insecure-policy=Redirect
- 
+    - |
+      oc get route "$APP_NAME" >/dev/null 2>&1 || \
+      oc create route edge "$APP_NAME" \
+        --service="$APP_NAME" \
+        --port="$APP_PORT" \
+        --insecure-policy=Redirect
+
     # ---------------------
     # DISPLAY OUTPUT
     # ---------------------
