@@ -1,48 +1,19 @@
-# option_chain.py
+# option_chain.py using nsepython
+from nsepython import nse_optionchain_scrapper
 import pandas as pd
-from NSE_client import NSEClient
-
-nse = NSEClient()
-
-# Common NSE index symbols
-INDEX_SYMBOLS = ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY"]
-
-def test_nse_connectivity(symbol="NIFTY"):
-    """Test NSE connectivity & option chain availability"""
-    try:
-        df = get_option_chain(symbol)
-        if df.empty:
-            return False, "Connected but option chain empty"
-        return True, f"NSE Connected ✅ | {symbol} | Rows: {len(df)}"
-    except Exception as e:
-        return False, str(e)
-
 
 def get_option_chain(symbol):
-    """Fetch option chain and return as pandas DataFrame"""
-    if symbol in INDEX_SYMBOLS:
-        url = f"https://www.nseindia.com/api/option-chain-indices?symbol={symbol}"
-    else:
-        url = f"https://www.nseindia.com/api/option-chain-equities?symbol={symbol}"
-
-    data = nse.get_json(url)
-
+    data = nse_optionchain_scrapper(symbol)
     rows = []
-    for row in data["records"].get("data", []):
-        ce = row.get("CE")
-        pe = row.get("PE")
-        if not ce or not pe:
-            continue  # skip incomplete strikes
-
-        rows.append({
-            "strike": row["strikePrice"],
-            "ce_oi": ce.get("openInterest", 0),
-            "ce_chg_oi": ce.get("changeinOpenInterest", 0),
-            "pe_oi": pe.get("openInterest", 0),
-            "pe_chg_oi": pe.get("changeinOpenInterest", 0),
-        })
-
-    df = pd.DataFrame(rows)
-    if df.empty:
-        raise Exception("Option chain returned empty data")
-    return df
+    for r in data["records"]["data"]:
+        ce = r.get("CE")
+        pe = r.get("PE")
+        if ce and pe:
+            rows.append({
+                "strike": r["strikePrice"],
+                "ce_oi": ce["openInterest"],
+                "ce_chg_oi": ce["changeinOpenInterest"],
+                "pe_oi": pe["openInterest"],
+                "pe_chg_oi": pe["changeinOpenInterest"]
+            })
+    return pd.DataFrame(rows)
