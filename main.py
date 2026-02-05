@@ -91,7 +91,8 @@ from alerts import send_email, should_alert
 from option_chain import get_option_chain
 #from seller_logic import evaluate_seller
 from seller_logic import analyze_strike
-from confidence import compute_confidence
+#from confidence import compute_confidence
+rom confidence import confidence_score
 
 # -------------------
 # Streamlit Page Setup
@@ -147,14 +148,14 @@ for symbol in FNO_SYMBOLS:
             continue
 
         # Evaluate seller logic per strike
-        alerts = evaluate_seller(symbol, oc)
+        alerts = analyze_strike(symbol, oc)
         
         for alert in alerts:
             side = alert['side']
             strike = alert['strike']
             atm = alert['atm']
             
-            confidence = compute_confidence(symbol, strike, side, oc)
+            confidence = confidence_score(symbol, strike, side, oc)
             alert_row = {
                 "Time": datetime.now().strftime("%H:%M:%S"),
                 "Symbol": symbol,
