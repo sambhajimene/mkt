@@ -1,5 +1,5 @@
 # fyers_client.py
-from fyers_api_v3 import FyersModel
+from fyers_apiv3 import FyersModel
 
 class FyersClient:
     def __init__(self, client_id, access_token):
