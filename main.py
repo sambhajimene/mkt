@@ -15,26 +15,19 @@ from alerts import send_email, should_alert
 st.set_page_config(page_title="Seller Advisor Dashboard", layout="wide")
 st.title("High-Confidence Alerts")
 
-# =========================================================
-# 🔐 FYERS AUTH
-# =========================================================
-auth_code = st.text_input(
-    "Enter FYERS auth_code (1-time daily)",
+# ----------------- Fyers Token -----------------
+st.subheader("🔐 FYERS Access Token (Manual Mode)")
+access_token = st.text_input(
+    "Paste FYERS access_token here",
     type="password"
 )
 
-if not auth_code:
-    st.warning("Login via FYERS → copy auth_code → paste here")
+if not access_token:
+    st.warning("⚠ Please paste FYERS access_token to continue")
     st.stop()
 
-try:
-    access_token = generate_access_token(auth_code)
-    fyers_client = FyersClient(FYERS_CLIENT_ID, access_token)
-except Exception as e:
-    st.error(f"Auth failed: {e}")
-    st.stop()
+fyers_client = FyersClient(FYERS_CLIENT_ID, access_token)
 
-st.success("FYERS authenticated successfully ✅")
 
 # =========================================================
 # 🔝 TOP DASHBOARD BUTTONS

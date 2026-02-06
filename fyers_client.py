@@ -1,30 +1,22 @@
 # fyers_client.py
-
 from fyers_apiv3 import fyersModel
-import tempfile
-import os
-
 
 class FyersClient:
-    def __init__(self, client_id: str, access_token: str):
+    def __init__(self, client_id, access_token):
+        self.client_id = client_id
+        self.access_token = access_token
 
-        # ✅ writable log path (fixes PermissionError)
-        log_dir = tempfile.gettempdir() + "/fyers/"
-        os.makedirs(log_dir, exist_ok=True)
-
+        # IMPORTANT: log_path writable hona chahiye
         self.fyers = fyersModel.FyersModel(
             client_id=client_id,
-            token=f"{client_id}:{access_token}",
-            log_path=log_dir
+            token=access_token,
+            log_path="/tmp/"   # 🔥 permission error fix
         )
 
-    def get_profile(self):
-        return self.fyers.get_profile()
-
     def get_quotes(self, symbols):
-        data = {"symbols": ",".join(symbols)}
-        return self.fyers.quotes(data)
-
-    def get_depth(self, symbol):
-        data = {"symbol": symbol, "ohlcv_flag": "1"}
-        return self.fyers.depth(data)
+        try:
+            data = self.fyers.quotes({"symbols": ",".join(symbols)})
+            return data
+        except Exception as e:
+            print("Fyers quote error:", e)
+            return None
