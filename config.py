@@ -5,7 +5,7 @@ ZERODHA_REDIRECT_URI = "http://127.0.0.1:5009"
 
 # Paste your Zerodha access token here (from first-time manual login)
 # This token will be used in headless mode
-ZERODHA_ACCESS_TOKEN = "paste_your_access_token_here"
+ZERODHA_ACCESS_TOKEN = "qXtcvJ2Cr7jjdHTkDUv6RMl4xM9LnsqC"
 
 # ================== MARKET CONFIG ==================
 REFRESH_MINUTES = 5
