@@ -2,9 +2,6 @@
 ZERODHA_API_KEY = "z9rful06a9890v8m"
 ZERODHA_API_SECRET = "z96wwv8htnih8n792673jj5trqc4hutm"
 ZERODHA_REDIRECT_URI = "http://127.0.0.1:5009"
-
-# Paste your Zerodha access token here (from first-time manual login)
-# This token will be used in headless mode
 ZERODHA_ACCESS_TOKEN = "ZW6Hm3GgtPwe5qU39DPBzMWT8XGb2xeM"
 
 # ================== MARKET CONFIG ==================
@@ -13,32 +10,21 @@ TIMEZONE = "Asia/Kolkata"
 
 # ================== SYMBOLS ==================
 import pandas as pd
-import os
 import requests
+from io import StringIO
 
-INSTRUMENTS_CSV = "instruments.csv"  # Local path for instruments file
+# In-memory download of instruments.csv from Zerodha
+INSTRUMENTS_URL = "https://api.kite.trade/instruments"
 
-def download_instruments():
-    """Download instruments.csv from Zerodha Kite"""
-    print("Downloading instruments.csv from Zerodha...")
-    url = "https://api.kite.trade/instruments"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        with open(INSTRUMENTS_CSV, "wb") as f:
-            f.write(response.content)
-        print("instruments.csv downloaded successfully!")
-    except Exception as e:
-        raise Exception(f"Failed to download instruments.csv: {e}")
+try:
+    response = requests.get(INSTRUMENTS_URL)
+    response.raise_for_status()
+    csv_data = StringIO(response.text)  # Load CSV into memory
+    df = pd.read_csv(csv_data)
+except Exception as e:
+    raise Exception(f"Failed to load instruments CSV: {e}")
 
-# Automatically download if not exists
-if not os.path.exists(INSTRUMENTS_CSV):
-    download_instruments()
-
-# Load instruments CSV
-df = pd.read_csv(INSTRUMENTS_CSV)
-
-# Filter for NSE Futures & Options (stocks + indices)
+# Filter NSE F&O (Futures + Options)
 fno_stocks = df[(df["segment"] == "NSE") & (df["instrument_type"].isin(["FUT", "OPT"]))]
 
 # Extract unique tradingsymbols
