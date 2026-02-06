@@ -1,4 +1,3 @@
-# confidence.py
 from collections import Counter
 
 def confidence_score(bias_list):

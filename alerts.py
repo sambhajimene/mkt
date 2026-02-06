@@ -1,4 +1,3 @@
-# alerts.py
 import smtplib
 from email.mime.text import MIMEText
 from config import EMAIL_FROM, EMAIL_PASSWORD, EMAIL_TO

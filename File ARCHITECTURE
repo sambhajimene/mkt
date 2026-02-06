@@ -1,13 +1,11 @@
-fyers_client.py → APIv3 compatible, token-based
-
-option_chain.py → dynamic CE/PE strike fetch ±5 strikes
-
-seller_logic.py → seller bias calculation
-
-confidence.py → confidence scoring
-
-alerts.py → email + repeated alert prevention
-
-main.py → fully Streamlit + OpenShift + auto-refresh + sidebar + LOC + alerts
-
-config.py
+/zerodha_seller_app
+│
+├─ main.py                  # Streamlit dashboard (fully automated)
+├─ config.py                # App & market config
+├─ alerts.py                # Email alerts
+├─ confidence.py            # Confidence scoring
+├─ zerodha_client.py        # Kite Connect API client (handles token refresh)
+├─ option_chain.py          # Option chain fetch & processing
+├─ seller_logic.py          # Strike analysis
+├─ requirements.txt
+└─ Dockerfile
