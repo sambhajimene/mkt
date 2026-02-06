@@ -13,7 +13,7 @@ from alerts import send_email, should_alert
 
 
 st.set_page_config(page_title="Seller Advisor Dashboard", layout="wide")
-st.title("🚀 Seller Advisor Dashboard (High-Confidence Alerts)")
+st.title("High-Confidence Alerts")
 
 # =========================================================
 # 🔐 FYERS AUTH
