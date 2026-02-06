@@ -10,7 +10,7 @@ variables:
   APP_NAME: mk
   APP_PORT: 5009
 
-##=====================
+# =====================
 # BUILD & PUSH
 # =====================
 build_and_push:
@@ -31,7 +31,7 @@ build_and_push:
     - echo "📦 Pushing image $FULL_IMAGE to Quay.io"
     - buildah push $FULL_IMAGE docker://$FULL_IMAGE
 
-#=====================
+# =====================
 # DEPLOY
 # =====================
 deploy:
@@ -51,16 +51,23 @@ deploy:
     - oc get deploy $APP_NAME >/dev/null 2>&1 || oc create deployment $APP_NAME --image=$FULL_IMAGE
     - oc set image deploy/$APP_NAME $APP_NAME=$FULL_IMAGE
 
-    # ---- Create / Update Secret (SAFE, repeatable)
+    # ---- Create / Update Email Secret
     - |
       oc delete secret email-secret --ignore-not-found
       oc create secret generic email-secret \
         --from-literal=EMAIL_FROM="$EMAIL_FROM" \
         --from-literal=EMAIL_PASS="$EMAIL_PASS" \
         --from-literal=EMAIL_TO="$EMAIL_TO"
-
-    # ---- Inject env vars from secret
     - oc set env deploy/$APP_NAME --from=secret/email-secret
+
+    # ---- Create / Update Zerodha Token Secret
+    - |
+      oc delete secret zerodha-secret --ignore-not-found
+      oc create secret generic zerodha-secret \
+        --from-literal=ZERODHA_ACCESS_TOKEN="$ZERODHA_ACCESS_TOKEN"
+    - oc set env deploy/$APP_NAME --from=secret/zerodha-secret
+
+    # ---- Rollout restart to pick new env vars
     - oc rollout restart deploy/$APP_NAME
     - oc rollout status deploy/$APP_NAME
 
@@ -70,11 +77,6 @@ deploy:
     - echo "🔌 Create Service if missing"
     - oc get svc $APP_NAME >/dev/null 2>&1 || oc create service clusterip $APP_NAME --tcp=$APP_PORT:$APP_PORT
 
-    # ---------------------
-    # ROUTE
-    # ---------------------
-    # - echo "🌐 Create Route if missing"
-    # - oc create route edge "$APP_NAME" --service=mk --port="$APP_PORT" --insecure-policy=Redirect
     # ---------------------
     # ROUTE
     # ---------------------
@@ -93,5 +95,6 @@ deploy:
     - echo "🌍 Application URL:"
     - oc get route $APP_NAME -o jsonpath='http://{.spec.host}'
     - echo ""
+
   only:
     - main
