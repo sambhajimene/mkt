@@ -1,26 +1,21 @@
-# fyers_token.py
+from fyers_apiv3 import SessionModel
 
-from fyers_apiv3 import fyersModel
-from config import FYERS_CLIENT_ID, FYERS_SECRET_ID, REDIRECT_URI
+CLIENT_ID = "UEYCB0VJMM-100"
+SECRET_KEY = "FNC70J694G"
+REDIRECT_URI = "https://mk-menesambhaji-dev.apps.rm1.0a51.p1.openshiftapps.com/"
 
+# 🔴 YAHAN CHANGE KARNA HAI
+AUTH_CODE = "PASTE_AUTH_CODE_HERE"
 
-def generate_access_token(auth_code: str) -> str:
-    """
-    Converts auth_code → access_token
-    """
+session = SessionModel(
+    client_id=CLIENT_ID,
+    secret_key=SECRET_KEY,
+    redirect_uri=REDIRECT_URI,
+    response_type="code",
+    grant_type="authorization_code"
+)
 
-    session = fyersModel.SessionModel(
-        client_id=FYERS_CLIENT_ID,
-        secret_key=FYERS_SECRET_ID,
-        redirect_uri=REDIRECT_URI,
-        response_type="code",
-        grant_type="authorization_code"
-    )
+session.set_token(AUTH_CODE)
+response = session.generate_token()
 
-    session.set_token(auth_code)
-    response = session.generate_token()
-
-    if response.get("s") != "ok":
-        raise Exception(f"Token generation failed: {response}")
-
-    return response["access_token"]
+print("TOKEN RESPONSE 👉", response)
