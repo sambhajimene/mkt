@@ -11,7 +11,7 @@ from alerts import send_email, should_alert
 
 # ----------------- Streamlit Page -----------------
 st.set_page_config(page_title="Zerodha Seller Advisor", layout="wide")
-st.title("High-Confidence Alerts (Zerodha)")
+st.title("High-Confidence Alerts")
 
 # ----------------- Initialize Zerodha Client -----------------
 st.subheader("🔌 Initializing Zerodha Client...")
