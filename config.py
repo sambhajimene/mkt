@@ -1,7 +1,7 @@
 # ================== ZERODHA CONFIG ==================
-ZERODHA_API_KEY = "your_api_key_here"
-ZERODHA_API_SECRET = "your_api_secret_here"
-ZERODHA_REDIRECT_URI = "https://your_redirect_uri_here"
+ZERODHA_API_KEY = "z9rful06a9890v8m"
+ZERODHA_API_SECRET = "z96wwv8htnih8n792673jj5trqc4hutm"
+ZERODHA_REDIRECT_URI = "http://127.0.0.1:5009"
 
 # Paste your Zerodha access token here (from first-time manual login)
 # This token will be used in headless mode
@@ -26,9 +26,9 @@ FNO_SYMBOLS = [
 # ================== Email Config ==================
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 465
-EMAIL_FROM = "yourmail@gmail.com"
-EMAIL_PASSWORD = "your_app_password"
-EMAIL_TO = ["yourmail@gmail.com"]
+EMAIL_FROM = "sambhajimene@gmail.com"
+EMAIL_PASSWORD = "jgebigpsoeqqwrfa"
+EMAIL_TO = ["sambhajimene@gmail.com"]
 
 # ================== Alerts Config ==================
 MIN_CONFIDENCE = 60  # %
