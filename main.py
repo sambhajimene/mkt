@@ -11,12 +11,16 @@ from alerts import send_email, should_alert
 
 # ----------------- Streamlit Page -----------------
 st.set_page_config(page_title="Zerodha Seller Advisor", layout="wide")
-st.title("High-Confidence Alerts")
+st.title("High-Confidence Alerts (Zerodha)")
 
 # ----------------- Initialize Zerodha Client -----------------
 st.subheader("🔌 Initializing Zerodha Client...")
-client = ZerodhaClient()
-st.success("Kite Client ready ✅")
+try:
+    client = ZerodhaClient()
+    st.success("Kite Client ready ✅")
+except Exception as e:
+    st.error(f"Error initializing Zerodha client: {e}")
+    st.stop()
 
 # ----------------- System Health & Tests -----------------
 st.markdown("### 🔌 System Health & Tests")
