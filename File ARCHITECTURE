@@ -9,3 +9,17 @@
 ├─ seller_logic.py          # Strike analysis
 ├─ requirements.txt
 └─ Dockerfile
+
+| Secret Name          | Description                            |
+| -------------------- | -------------------------------------- |
+| `QUAY_USER`          | menesambhaji+mk                      
+| `QUAY_PASSWORD`      | OXKKJO8HSXULVWEPGUJWF3OOP9ULA8R8RRQZ70EA1NXXQ1AZSR7L98IP1VIZD5FP         |
+|  QUAY_REPO		   |quay.io/menesambhaji/mk
+|  OPENSHIFT_PROJECT   | menesambhaji-dev
+| `OPENSHIFT_SERVER`   | https://api.rm1.0a51.p1.openshiftapps.com:6443                      |
+| `OPENSHIFT_TOKEN`    | sha256~teJdbkICS8Hq1Wdbh1G2dsWCEYCRHlkLoHKuOKlxJlo                        |
+| `EMAIL_FROM`         | sambhajimene@gmail.com       
+| `EMAIL_PASS`         | euea ngdf sjme yxar                 
+| `EMAIL_TO`           | sambhajimene@gmail.com                        |
+| `ZERODHA_API_KEY`    | z9rful06a9890v8m    
+| `ZERODHA_API_SECRET` | z96wwv8htnih8n792673jj5trqc4hutm 
