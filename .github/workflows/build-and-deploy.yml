@@ -1,6 +1,5 @@
 name: Build, Push & Deploy
 
-# Trigger workflow on push to main branch
 on:
   push:
     branches:
@@ -9,7 +8,6 @@ on:
 env:
   IMAGE_TAG: latest
   IMAGE_NAME: quay.io/menesambhaji/mk
-  FULL_IMAGE: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
   OPENSHIFT_PROJECT: menesambhaji-dev
   APP_NAME: mk
   APP_PORT: 5009
@@ -29,6 +27,8 @@ jobs:
           sudo apt-get install -y buildah
 
       - name: Build Docker Image
+        env:
+          FULL_IMAGE: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
         run: |
           echo "🔨 Building image $FULL_IMAGE"
           buildah bud -t $FULL_IMAGE .
@@ -39,6 +39,8 @@ jobs:
           buildah login -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_PASSWORD }} quay.io
 
       - name: Push Docker Image
+        env:
+          FULL_IMAGE: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
         run: |
           echo "📦 Pushing image $FULL_IMAGE to Quay.io"
           buildah push $FULL_IMAGE docker://$FULL_IMAGE
@@ -62,10 +64,12 @@ jobs:
           oc project ${{ env.OPENSHIFT_PROJECT }}
 
       - name: Deploy Application
+        env:
+          FULL_IMAGE: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
         run: |
           echo "🚀 Deploy / Update ${{ env.APP_NAME }}"
-          oc get deploy ${{ env.APP_NAME }} >/dev/null 2>&1 || oc create deployment ${{ env.APP_NAME }} --image=${{ env.FULL_IMAGE }}
-          oc set image deploy/${{ env.APP_NAME }} ${{ env.APP_NAME }}=${{ env.FULL_IMAGE }}
+          oc get deploy ${{ env.APP_NAME }} >/dev/null 2>&1 || oc create deployment ${{ env.APP_NAME }} --image=$FULL_IMAGE
+          oc set image deploy/${{ env.APP_NAME }} ${{ env.APP_NAME }}=$FULL_IMAGE
 
           # Create / Update Secret
           oc delete secret email-secret --ignore-not-found
@@ -93,4 +97,3 @@ jobs:
           echo "✅ Deployment completed"
           echo "🌍 Application URL:"
           oc get route ${{ env.APP_NAME }} -o jsonpath='http://{.spec.host}'
-
