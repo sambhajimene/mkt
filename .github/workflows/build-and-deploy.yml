@@ -35,7 +35,7 @@ jobs:
 
       - name: Login to Quay.io
         run: |
-          echo "${{ secrets.QUAY_PASSWORD }}" | buildah login -u ${{ secrets.QUAY_USER }} --password-stdin quay.io
+          echo "${{ secrets.QUAY_PASSWORD }}" | buildah login -u "${{ secrets.QUAY_USER }}" --password-stdin quay.io
 
       - name: Push Docker Image
         env:
