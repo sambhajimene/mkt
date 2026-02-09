@@ -78,10 +78,31 @@ if oc:
                     f"{symbol} {bias} Strike {strike['strike']} Confidence {score}%"
                 )
 
+# # =========================================================
+# # 🔥 ALERT TABLE
+# # =========================================================
+# st.subheader("🔥 Latest High-Confidence Alerts")
+
+# if alerts_df:
+#     df_alerts = pd.DataFrame(alerts_df)
+
+#     def color_conf(val):
+#         if val >= 80:
+#             return "background-color: green; color: white"
+#         elif val >= MIN_CONFIDENCE:
+#             return "background-color: yellow"
+#         return ""
+
+#     st.dataframe(
+#         df_alerts.style.applymap(color_conf, subset=["Confidence"]),
+#         use_container_width=True
+#     )
+# else:
+#     st.info("✅ No high-confidence alerts currently")
 # =========================================================
 # 🔥 ALERT TABLE
 # =========================================================
-st.subheader("🔥 Latest High-Confidence Alerts")
+st.subheader("🔥 Latest Alerts (High & Medium Confidence)")
 
 if alerts_df:
     df_alerts = pd.DataFrame(alerts_df)
@@ -91,6 +112,8 @@ if alerts_df:
             return "background-color: green; color: white"
         elif val >= MIN_CONFIDENCE:
             return "background-color: yellow"
+        elif val >= 10:
+            return "background-color: orange"
         return ""
 
     st.dataframe(
@@ -98,4 +121,4 @@ if alerts_df:
         use_container_width=True
     )
 else:
-    st.info("✅ No high-confidence alerts currently")
+    st.info("✅ No alerts currently")
