@@ -1,0 +1,388 @@
+#alerts.py
+import smtplib
+from email.mime.text import MIMEText
+from config import EMAIL_FROM, EMAIL_PASSWORD, EMAIL_TO
+
+# Keep track of last alerts to avoid duplicates
+_last_alert = {}
+
+def send_email(subject: str, body: str):
+    """
+    Send email alert using Gmail SMTP (SSL).
+    Works with app password.
+    """
+    try:
+        msg = MIMEText(body)
+        msg["Subject"] = subject
+        msg["From"] = EMAIL_FROM
+        msg["To"] = ", ".join(EMAIL_TO)
+
+        # Connect and send email
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(EMAIL_FROM, EMAIL_PASSWORD)
+            server.send_message(msg)
+
+        print(f"[EMAIL SENT] {subject}")
+        return True
+    except Exception as e:
+        print(f"[EMAIL ERROR] {e}")
+        return False
+
+def should_alert(symbol: str, strike: float, bias: str) -> bool:
+    """
+    Returns True if an alert for this symbol/strike/bias should be sent.
+    Prevents duplicate alerts for the same strike/bias.
+    """
+    key = f"{symbol}_{strike}_{bias}"
+    if _last_alert.get(symbol) == key:
+        return False
+    _last_alert[symbol] = key
+    return True
+ #########################################
+ #confidence.py
+ from collections import Counter
+
+def confidence_score(bias_list):
+    if not bias_list:
+        return 0
+    count = Counter(bias_list)
+    bias, hits = count.most_common(1)[0]
+    score = int((hits / len(bias_list)) * 100)
+    return score
+###############################################
+#config.py
+# ================== ZERODHA CONFIG ==================
+ZERODHA_API_KEY = "z9rful06a9890v8m"
+ZERODHA_API_SECRET = "z96wwv8htnih8n792673jj5trqc4hutm"
+ZERODHA_REDIRECT_URI = "http://127.0.0.1:5010"
+ZERODHA_ACCESS_TOKEN = "P9dHlj8nGW6CcHG3R0V9PxpYL84012zQ"
+
+# ================== MARKET CONFIG ==================
+REFRESH_MINUTES = 5
+TIMEZONE = "Asia/Kolkata"
+
+# ================== SYMBOLS ==================
+# F&O / scanner symbols
+FNO_SYMBOLS = [
+    "BANKNIFTY","FINNIFTY","MIDCPNIFTY","NIFTY","NIFTYNXT50","360ONE",
+    "ABB","ABCAPITAL","ADANIENSOL","ADANIENT","ADANIGREEN","ADANIPORTS",
+    "ALKEM","AMBER","AMBUJACEM","ANGELONE","APLAPOLLO","APOLLOHOSP",
+    "ASHOKLEY","ASIANPAINT","ASTRAL","AUBANK","AUROPHARMA","AXISBANK",
+    "BAJAJ-AUTO","BAJAJFINSV","BAJAJHLDNG","BAJFINANCE","BANDHANBNK",
+    "BANKBARODA","BANKINDIA","BDL","BEL","BHARATFORG","BHARTIARTL",
+    "BHEL","BIOCON","BLUESTARCO","BOSCHLTD","BPCL","BRITANNIA","BSE",
+    "CAMS","CANBK","CDSL","CGPOWER","CHOLAFIN","CIPLA","COALINDIA",
+    "COFORGE","COLPAL","CONCOR","CROMPTON","CUMMINSIND","DABUR",
+    "DALBHARAT","DELHIVERY","DIVISLAB","DIXON","DLF","DMART","DRREDDY",
+    "EICHERMOT","ETERNAL","EXIDEIND","FEDERALBNK","FORTIS","GAIL",
+    "GLENMARK","GMRAIRPORT","GODREJCP","GODREJPROP","GRASIM","HAL",
+    "HAVELLS","HCLTECH","HDFCAMC","HDFCBANK","HDFCLIFE","HEROMOTOCO",
+    "HINDALCO","HINDPETRO","HINDUNILVR","HINDZINC","HUDCO","ICICIBANK",
+    "ICICIGI","ICICIPRULI","IDEA","IDFCFIRSTB","IEX","INDHOTEL",
+    "INDIANB","INDIGO","INDUSINDBK","INDUSTOWER","INFY","INOXWIND",
+    "IOC","IRCTC","IREDA","IRFC","ITC","JINDALSTEL","JIOFIN","JSWENERGY",
+    "JSWSTEEL","JUBLFOOD","KALYANKJIL","KAYNES","KEI","KFINTECH",
+    "KOTAKBANK","KPITTECH","LAURUSLABS","LICHSGFIN","LICI","LODHA","LT",
+    "LTF","LTIM","LUPIN","M&M","MANAPPURAM","MANKIND","MARICO","MARUTI",
+    "MAXHEALTH","MAZDOCK","MCX","MFSL","MOTHERSON","MPHASIS","MUTHOOTFIN",
+    "NATIONALUM","NAUKRI","NBCC","NESTLEIND","NHPC","NMDC","NTPC","NUVAMA",
+    "NYKAA","OBEROIRLTY","OFSS","OIL","ONGC","PAGEIND","PATANJALI","PAYTM",
+    "PERSISTENT","PETRONET","PFC","PGEL","PHOENIXLTD","PIDILITIND","PIIND",
+    "PNB","PNBHOUSING","POLICYBZR","POLYCAB","POWERGRID","POWERINDIA",
+    "PPLPHARMA","PREMIERENE","PRESTIGE","RBLBANK","RECLTD","RELIANCE",
+    "RVNL","SAIL","SAMMAANCAP","SBICARD","SBILIFE","SBIN","SHREECEM",
+    "SHRIRAMFIN","SIEMENS","SOLARINDS","SONACOMS","SRF","SUNPHARMA",
+    "SUPREMEIND","SUZLON","SWIGGY","SYNGENE","TATACONSUM","TATAELXSI",
+    "TATAPOWER","TATASTEEL","TATATECH","TCS","TECHM","TIINDIA","TITAN",
+    "TMPV","TORNTPHARM","TORNTPOWER","TRENT","TVSMOTOR","ULTRACEMCO",
+    "UNIONBANK","UNITDSPR","UNOMINDA","UPL","VBL","VEDL","VOLTAS",
+    "WAAREEENER","WIPRO","YESBANK","ZYDUSLIFE"
+]
+
+# ================== Email Config ==================
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 465
+EMAIL_FROM = "sambhajimene@gmail.com"
+EMAIL_PASSWORD = "jgebigpsoeqqwrfa"
+EMAIL_TO = ["sambhajimene@gmail.com"]
+
+# ================== Alerts Config ==================
+MIN_CONFIDENCE = 30  # %
+##################################
+#main.py
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+
+from config import FNO_SYMBOLS, REFRESH_MINUTES, MIN_CONFIDENCE
+from zerodha_client import ZerodhaClient
+from option_chain import get_option_chain
+from seller_logic import analyze_strike
+from confidence import confidence_score
+from alerts import send_email, should_alert
+
+st.set_page_config(page_title="Seller Advisor Dashboard", layout="wide")
+st.title("High-Confidence Alerts")
+
+# =========================================================
+# 🔝 TOP DASHBOARD BUTTONS
+# =========================================================
+st.subheader("🔌 System Health & Tests")
+
+client = ZerodhaClient()
+
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("🔌 Check Zerodha Connectivity"):
+        profile = client.get_profile()
+        if profile:
+            st.success("Zerodha Connected ✅")
+            st.json(profile)
+        else:
+            st.error("❌ Failed to fetch profile")
+
+with col2:
+    if st.button("📧 Send Test Email"):
+        try:
+            send_email("TEST EMAIL", "Email system working ✅")
+            st.success("Test email sent successfully ✅")
+        except Exception as e:
+            st.error(f"Email failed: {e}")
+
+st.divider()
+
+# =========================================================
+# ⚙ CONTROLS
+# =========================================================
+st.subheader("⚙ Controls")
+symbol = st.selectbox("Select Symbol", FNO_SYMBOLS)
+refresh_minutes = st.number_input(
+    "Refresh interval (minutes)", 1, 30, REFRESH_MINUTES
+)
+
+# =========================================================
+# 📊 OPTION CHAIN & ALERTS
+# =========================================================
+alerts_df = []
+
+oc = get_option_chain(client, symbol)
+
+if oc:
+    df_oc = pd.DataFrame(oc)
+    st.subheader("📈 Live Option Chain")
+    st.dataframe(df_oc, use_container_width=True)
+
+    for strike in oc:
+        bias = analyze_strike(strike)
+        if bias != "NO TRADE":
+            score = confidence_score([bias])
+            if score >= MIN_CONFIDENCE and should_alert(symbol, strike["strike"], bias):
+                alerts_df.append({
+                    "Time": datetime.now().strftime("%H:%M:%S"),
+                    "Symbol": symbol,
+                    "Strike": strike["strike"],
+                    "Side": bias,
+                    "Confidence": score
+                })
+                send_email(
+                    f"High-Confidence Alert: {symbol}",
+                    f"{symbol} {bias} Strike {strike['strike']} Confidence {score}%"
+                )
+
+# =========================================================
+# 🔥 ALERT TABLE
+# =========================================================
+st.subheader("🔥 Latest High-Confidence Alerts")
+
+if alerts_df:
+    df_alerts = pd.DataFrame(alerts_df)
+
+    def color_conf(val):
+        if val >= 80:
+            return "background-color: green; color: white"
+        elif val >= MIN_CONFIDENCE:
+            return "background-color: yellow"
+        return ""
+
+    st.dataframe(
+        df_alerts.style.applymap(color_conf, subset=["Confidence"]),
+        use_container_width=True
+    )
+else:
+    st.info("✅ No high-confidence alerts currently")
+############################################
+#option_chain.py
+from zerodha_client import ZerodhaClient
+from datetime import datetime, timedelta
+import math
+import calendar
+
+def get_nearest_expiry(symbol: str):
+    """
+    Returns the nearest expiry date string in Zerodha format: DDMMM (e.g., 13FEB)
+    - For NIFTY/BANKNIFTY: nearest Thursday (weekly expiry)
+    - For stocks: nearest monthly expiry (last Thursday of month)
+    """
+    today = datetime.today()
+    
+    if symbol in ["NIFTY", "BANKNIFTY"]:
+        # Weekly expiry: nearest Thursday
+        offset = (3 - today.weekday()) % 7  # Thursday = weekday 3
+        if offset == 0 and today.hour >= 15:  # if today is Thursday after market
+            offset = 7
+        expiry = today + timedelta(days=offset)
+    else:
+        # Stock monthly expiry: last Thursday of current or next month
+        year = today.year
+        month = today.month
+        last_day = calendar.monthrange(year, month)[1]
+        last_thursday = max([day for day in range(1, last_day+1)
+                             if datetime(year, month, day).weekday() == 3])
+        expiry = datetime(year, month, last_thursday)
+        if expiry < today:  # move to next month if already passed
+            month += 1
+            if month > 12:
+                month = 1
+                year += 1
+            last_day = calendar.monthrange(year, month)[1]
+            last_thursday = max([day for day in range(1, last_day+1)
+                                 if datetime(year, month, day).weekday() == 3])
+            expiry = datetime(year, month, last_thursday)
+
+    return expiry.strftime("%d%b").upper()  # e.g., 13FEB
+
+def get_option_chain(client: ZerodhaClient, symbol: str):
+    """
+    Fetch dynamic option chain for a given symbol using Zerodha.
+    Returns a list of dicts with strike, CE, PE data
+    """
+    # Step 1: Get spot price
+    spot_data = client.get_quotes([f"NSE:{symbol}"])
+    if not spot_data or f"NSE:{symbol}" not in spot_data:
+        return []
+
+    spot_price = spot_data[f"NSE:{symbol}"].get("last_price", 0)
+    if not spot_price:
+        return []
+
+    # Step 2: Compute ATM ±5 strikes (round to nearest 50)
+    atm_strike = round(spot_price / 50) * 50
+    strikes_range = [atm_strike + i*50 for i in range(-5, 6)]
+
+    # Step 3: Get nearest expiry string
+    expiry_str = get_nearest_expiry(symbol)
+
+    # Step 4: Generate CE/PE symbols dynamically
+    ce_symbols = [f"NSE:{symbol}{expiry_str}{strike}CE" for strike in strikes_range]
+    pe_symbols = [f"NSE:{symbol}{expiry_str}{strike}PE" for strike in strikes_range]
+
+    # Step 5: Fetch all quotes
+    all_symbols = ce_symbols + pe_symbols
+    data = client.get_quotes(all_symbols)
+    if not data:
+        return []
+
+    # Step 6: Build option chain
+    chain = []
+    for ce_sym, pe_sym, strike in zip(ce_symbols, pe_symbols, strikes_range):
+        ce = data.get(ce_sym, {})
+        pe = data.get(pe_sym, {})
+        chain.append({
+            "strike": strike,
+            "CE": {
+                "ltp": ce.get("last_price", 0),
+                "oi": ce.get("oi", 0),
+                "changeinOpenInterest": ce.get("change_in_oi", 0)
+            },
+            "PE": {
+                "ltp": pe.get("last_price", 0),
+                "oi": pe.get("oi", 0),
+                "changeinOpenInterest": pe.get("change_in_oi", 0)
+            }
+        })
+
+    return chain
+#################################################
+#seller_logic.py
+# seller_logic.py
+def analyze_strike(strike):
+    ce = strike["CE"]
+    pe = strike["PE"]
+
+    ce_change = ce["changeinOpenInterest"]
+    pe_change = pe["changeinOpenInterest"]
+
+    if ce_change > 0 and pe_change < 0:
+        return "MARKET DOWN (PUT BUY)"
+    if ce_change < 0 and pe_change > 0:
+        return "MARKET UP (CALL BUY)"
+    if ce_change > 0 and pe_change > 0:
+        return "RANGE / TRAP"
+    if ce_change < 0 and pe_change < 0:
+        return "BREAKOUT / VOLATILITY"
+
+    return "NO TRADE"
+################################################
+#zerodha_client.py
+import json
+from kiteconnect import KiteConnect
+from config import (
+    ZERODHA_API_KEY,
+    ZERODHA_API_SECRET,
+    ZERODHA_ACCESS_TOKEN,
+    ZERODHA_REDIRECT_URI,
+)
+
+class ZerodhaClient:
+    def __init__(self):
+        self.api_key = ZERODHA_API_KEY
+        self.api_secret = ZERODHA_API_SECRET
+        self.redirect_uri = ZERODHA_REDIRECT_URI
+
+        # Load access token from JSON file if available
+        self.access_token = self._load_access_token()
+
+        # Initialize KiteConnect client
+        self.kite = KiteConnect(api_key=self.api_key)
+        self.kite.set_access_token(self.access_token)
+        print("Kite Client ready ✅")
+
+    def _load_access_token(self):
+        """
+        Read access token from zerodha_token.json or fallback to config
+        """
+        try:
+            with open("zerodha_token.json") as f:
+                data = json.load(f)
+                token = data.get("access_token")
+                if token:
+                    print("✅ Access token loaded from zerodha_token.json")
+                    return token
+        except FileNotFoundError:
+            pass
+
+        print("⚠ Using access token from config.py")
+        return ZERODHA_ACCESS_TOKEN
+
+    def get_profile(self):
+        """
+        Returns profile dict if successful
+        """
+        try:
+            profile = self.kite.profile()
+            return profile
+        except Exception as e:
+            print(f"❌ Failed to fetch profile: {e}")
+            return None
+
+    def get_quotes(self, symbols):
+        """
+        Fetch live quotes for list of symbols
+        """
+        try:
+            data = self.kite.ltp(symbols)
+            return data
+        except Exception as e:
+            print(f"❌ Failed to fetch quotes: {e}")
+            return None
