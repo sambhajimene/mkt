@@ -26,8 +26,8 @@ COPY . .
 # Streamlit environment
 ENV STREAMLIT_SERVER_ENABLECORS=false
 ENV STREAMLIT_SERVER_HEADLESS=true
-ENV STREAMLIT_SERVER_PORT=5009
+ENV STREAMLIT_SERVER_PORT=5010
 
-EXPOSE 5009
+EXPOSE 5010
 
-CMD ["streamlit", "run", "main.py", "--server.port", "5009", "--server.address", "0.0.0.0"]
+CMD ["streamlit", "run", "main.py", "--server.port", "5010", "--server.address", "0.0.0.0"]

@@ -1,8 +1,8 @@
 # ================== ZERODHA CONFIG ==================
 ZERODHA_API_KEY = "z9rful06a9890v8m"
 ZERODHA_API_SECRET = "z96wwv8htnih8n792673jj5trqc4hutm"
-ZERODHA_REDIRECT_URI = "http://127.0.0.1:5009"
-ZERODHA_ACCESS_TOKEN = "qK15Nvp1SIzIfB01VtUOeXKa8VHDjbdo"
+ZERODHA_REDIRECT_URI = "http://127.0.0.1:5010"
+ZERODHA_ACCESS_TOKEN = "P9dHlj8nGW6CcHG3R0V9PxpYL84012zQ"
 
 # ================== MARKET CONFIG ==================
 REFRESH_MINUTES = 5

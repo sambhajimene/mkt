@@ -8,7 +8,7 @@ from datetime import datetime
 # ================== CONFIG ==================
 API_KEY = os.getenv("API_KEY")        # your API key
 API_SECRET = os.getenv("API_SECRET")  # your API secret
-REDIRECT_URI = "http://127.0.0.1:5009"
+REDIRECT_URI = "http://127.0.0.1:5010"
 
 ACCESS_TOKEN_FILE = "access_token.txt"
 
