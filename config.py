@@ -53,5 +53,5 @@ EMAIL_FROM = "sambhajimene@gmail.com"
 EMAIL_PASSWORD = "jgebigpsoeqqwrfa"
 EMAIL_TO = ["sambhajimene@gmail.com"]
 
-# ================== Alerts Config ==================
+### ================== Alerts Config ==================
 MIN_CONFIDENCE = 30  # %
