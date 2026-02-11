@@ -1,4 +1,4 @@
-# alerts.py
+# alerts.py SAmbhaji Mene
 import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
