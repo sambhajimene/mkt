@@ -10,8 +10,8 @@ from seller_logic import analyze_strike
 from confidence import confidence_score
 from alerts import send_email, should_alert
 
-st.set_page_config(page_title="Seller Advisor Dashboard", layout="wide")
-st.title("📊 Seller Advisor – Live Alerts")
+st.set_page_config(page_title="Advisor Dashboard", layout="wide")
+st.title("Live Alerts")
 
 # =========================================================
 # 🔌 SYSTEM HEALTH TABS (RESTORED)
