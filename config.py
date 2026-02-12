@@ -1,4 +1,4 @@
-# ================== ZERODHA CONFIG ==================
+## ================== ZERODHA CONFIG ==================
 ZERODHA_API_KEY = "z9rful06a9890v8m"
 ZERODHA_API_SECRET = "z96wwv8htnih8n792673jj5trqc4hutm"
 ZERODHA_REDIRECT_URI = "http://127.0.0.1:5010"
