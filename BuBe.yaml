@@ -296,7 +296,7 @@ def save_signals(signals_dict):
 
 # ================= STREAMLIT UI =================
 st.set_page_config(layout="wide")
-st.title("🔥 Bullish & Bearish Multi-Timeframe HA Scanner")
+st.title(" BuBe HA Scan")
 
 st.sidebar.title("⚙ Settings")
 auto_mode = st.sidebar.checkbox("Enable Auto Scan Every Hour")
