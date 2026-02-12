@@ -3,7 +3,6 @@ name: Build, Push & Deploy
 on:
   push:
     branches:
-      #- dev
       - main
 
 env:
