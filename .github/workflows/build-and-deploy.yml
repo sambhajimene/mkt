@@ -4,8 +4,8 @@ name: Build, Push & Deploy
 on:
   push:
     branches:
-      - dev
-      #- main
+      #- dev
+      - main
 
 env:
   IMAGE_TAG: latest
