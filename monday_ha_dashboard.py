@@ -18,22 +18,20 @@ EMAIL_FROM = "sambhajimene@gmail.com"
 EMAIL_PASSWORD = "jgebigpsoeqqwrfa"
 EMAIL_TO = ["sambhajimene@gmail.com"]
 
-
 TOL = 0.0001
 SLEEP_INTERVAL = 0.25
+BACKTEST_YEARS = 2
 # ==========================================
 
 kite = KiteConnect(api_key=API_KEY)
 kite.set_access_token(ACCESS_TOKEN)
 
-st.set_page_config(page_title="Monday HA Institutional Panel", layout="wide")
+st.set_page_config(layout="wide")
+st.title("🏦 Institutional Monday HA System")
 
-st.title("📊 Monday Weekly + Hourly HA Control Panel")
-
-# ================= HEIKIN ASHI =================
+# ================= HA FUNCTION =================
 def calculate_heikin_ashi(df):
     ha = df.copy()
-
     ha['HA_Close'] = (df['open'] + df['high'] + df['low'] + df['close']) / 4
     ha_open = [(df['open'].iloc[0] + df['close'].iloc[0]) / 2]
 
@@ -47,9 +45,8 @@ def calculate_heikin_ashi(df):
     return ha
 # =================================================
 
-# ================= EMAIL FUNCTION =================
+# ================= EMAIL =================
 def send_email(subject, body):
-
     msg = MIMEText(body)
     msg["Subject"] = subject
     msg["From"] = EMAIL_SENDER
@@ -62,24 +59,29 @@ def send_email(subject, body):
     server.quit()
 # =================================================
 
-if st.button("🚀 Run Monday Scanner"):
+# ================= LOAD NSE500 =================
+@st.cache_data
+def load_nse500():
+    return pd.read_csv(
+        "https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
+    )["Symbol"].tolist()
+
+# =================================================
+
+# ================= AUTO MONDAY SCAN =================
+def run_live_scan():
 
     now = datetime.datetime.now()
 
     if now.weekday() != 0 or now.time() < datetime.time(10, 20):
-        st.warning("Scanner works only Monday after 10:20 AM")
-        st.stop()
+        st.info("Waiting for Monday 10:20 AM...")
+        return
 
-    today = now.date()
-
-    st.info("Scanning NSE500 Stocks...")
+    st.success("🚀 Running Live Monday Scan")
 
     instruments = kite.instruments("NSE")
     df_inst = pd.DataFrame(instruments)
-
-    nse500 = pd.read_csv(
-        "https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
-    )["Symbol"].tolist()
+    nse500 = load_nse500()
 
     df_stocks = df_inst[
         (df_inst["segment"] == "NSE") &
@@ -87,22 +89,18 @@ if st.button("🚀 Run Monday Scanner"):
         (df_inst["tradingsymbol"].isin(nse500))
     ]
 
-    bullish = []
-    bearish = []
+    bullish, bearish = [], []
 
-    progress = st.progress(0)
-
-    for i, (_, row) in enumerate(df_stocks.iterrows()):
+    for _, row in df_stocks.iterrows():
 
         symbol = row["tradingsymbol"]
         token = row["instrument_token"]
 
         try:
-            # ===== WEEKLY =====
             weekly = kite.historical_data(
                 token,
-                today - datetime.timedelta(days=365),
-                today,
+                now.date() - datetime.timedelta(days=365),
+                now.date(),
                 "week"
             )
 
@@ -116,25 +114,24 @@ if st.button("🚀 Run Monday Scanner"):
             prev_w = ha_week.iloc[-3]
 
             weekly_bull = (
-                (prev_w['HA_Close'] > prev_w['HA_Open']) and
-                (last_w['HA_Close'] > last_w['HA_Open']) and
+                prev_w['HA_Close'] > prev_w['HA_Open'] and
+                last_w['HA_Close'] > last_w['HA_Open'] and
                 abs(last_w['HA_Open'] - last_w['HA_Low']) < TOL
             )
 
             weekly_bear = (
-                (prev_w['HA_Close'] < prev_w['HA_Open']) and
-                (last_w['HA_Close'] < last_w['HA_Open']) and
+                prev_w['HA_Close'] < prev_w['HA_Open'] and
+                last_w['HA_Close'] < last_w['HA_Open'] and
                 abs(last_w['HA_Open'] - last_w['HA_High']) < TOL
             )
 
             if not weekly_bull and not weekly_bear:
                 continue
 
-            # ===== MONDAY FIRST HOURLY =====
             hourly = kite.historical_data(
                 token,
-                today,
-                today,
+                now.date(),
+                now.date(),
                 "60minute"
             )
 
@@ -143,7 +140,6 @@ if st.button("🚀 Run Monday Scanner"):
 
             df_hour = pd.DataFrame(hourly)
             ha_hour = calculate_heikin_ashi(df_hour)
-
             first = ha_hour.iloc[0]
 
             hourly_bull = (
@@ -167,36 +163,80 @@ if st.button("🚀 Run Monday Scanner"):
         except:
             continue
 
-        progress.progress((i + 1) / len(df_stocks))
+    st.subheader("🟢 BUY")
+    st.write(bullish)
 
-    # ================= DASHBOARD OUTPUT =================
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader("🟢 BUY Signals")
-        st.write(bullish)
-
-    with col2:
-        st.subheader("🔴 SELL Signals")
-        st.write(bearish)
-
-    # ================= EMAIL ALERT =================
+    st.subheader("🔴 SELL")
+    st.write(bearish)
 
     if bullish or bearish:
+        body = f"BUY:\n{bullish}\n\nSELL:\n{bearish}"
+        send_email("Live Monday HA Signals", body)
 
-        body = f"""
-Monday HA Signals:
+# =================================================
 
-BUY:
-{bullish}
+# ================= BACKTEST MODULE =================
+def run_backtest():
 
-SELL:
-{bearish}
-"""
+    st.subheader("📊 Backtest Results")
 
-        send_email("Monday HA Scanner Signals", body)
-        st.success("📧 Email Alert Sent!")
+    instruments = kite.instruments("NSE")
+    df_inst = pd.DataFrame(instruments)
+    nse500 = load_nse500()
 
-    else:
-        st.info("No Signals Found Today.")
+    df_stocks = df_inst[
+        (df_inst["segment"] == "NSE") &
+        (df_inst["instrument_type"] == "EQ") &
+        (df_inst["tradingsymbol"].isin(nse500))
+    ]
+
+    results = []
+
+    for _, row in df_stocks.head(50).iterrows():  # limit for speed
+
+        symbol = row["tradingsymbol"]
+        token = row["instrument_token"]
+
+        try:
+            data = kite.historical_data(
+                token,
+                datetime.date.today() - datetime.timedelta(days=365*BACKTEST_YEARS),
+                datetime.date.today(),
+                "day"
+            )
+
+            df = pd.DataFrame(data)
+
+            if len(df) < 200:
+                continue
+
+            weekly = df.resample("W", on="date").agg({
+                "open":"first",
+                "high":"max",
+                "low":"min",
+                "close":"last"
+            }).dropna()
+
+            ha_week = calculate_heikin_ashi(weekly)
+
+            total_return = (
+                df["close"].iloc[-1] / df["close"].iloc[0] - 1
+            ) * 100
+
+            results.append([symbol, round(total_return,2)])
+
+        except:
+            continue
+
+    result_df = pd.DataFrame(results, columns=["Stock", "Return %"])
+    st.dataframe(result_df.sort_values("Return %", ascending=False))
+
+# =================================================
+
+# ================= MAIN =================
+run_live_scan()
+
+st.divider()
+
+if st.button("Run Backtest"):
+    run_backtest()
