@@ -27,7 +27,7 @@ kite = KiteConnect(api_key=API_KEY)
 kite.set_access_token(ACCESS_TOKEN)
 
 st.set_page_config(layout="wide")
-st.title("🏦 Institutional Monday HA System")
+st.title("Monday HA System")
 
 # ================= HA FUNCTION =================
 def calculate_heikin_ashi(df):
@@ -74,7 +74,7 @@ def run_live_scan():
     now = datetime.datetime.now()
 
     if now.weekday() != 0 or now.time() < datetime.time(10, 20):
-        st.info("Waiting for Monday 10:20 AM...")
+        st.info("Waiting for Monday 09:20 AM...")
         return
 
     st.success("🚀 Running Live Monday Scan")
