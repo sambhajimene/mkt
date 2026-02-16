@@ -73,7 +73,7 @@ def run_live_scan():
 
     now = datetime.datetime.now()
 
-    if now.weekday() != 0 or now.time() < datetime.time(10, 20):
+    if now.weekday() != 0 or now.time() < datetime.time(09, 20):
         st.info("Waiting for Monday 09:20 AM...")
         return
 
