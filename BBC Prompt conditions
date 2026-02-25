@@ -130,9 +130,23 @@ FUTURES CONFIRMATION
 
 • Price decreasing AND OI increasing → Short buildup
 
+
 Generate:
 
 BB SELL Signal
+
+
+OI Extraction Engine Requirements
+
+Build a dedicated Options Open Interest Extraction Engine with:
+
+Option chain data fetching from API
+
+Automatic ATM strike detection using spot price
+
+ITM strike selection logic
+
+OI change calculation
 
 =====================
 INDICATORS
@@ -216,6 +230,49 @@ Create a professional UI with:
 
 Display OI percentage changes clearly in the dashboard.
 
+
+OI Extraction Engine Requirements
+
+Build a dedicated Options Open Interest Extraction Engine with:
+
+Option chain data fetching from API
+
+Automatic ATM strike detection using spot price
+
+ITM strike selection logic
+
+OI change calculation
+
+Price vs OI interpretation:
+
+Price ↑ + OI ↓ → Short covering
+Price ↓ + OI ↑ → Short buildup
+
+Generate directional bias:
+
+Bullish OI Score
+
+Bearish OI Score
+
+The engine should support index and stock derivatives.
+
+Fast Multiprocessing Scanner
+
+The scanner must:
+
+Use multiprocessing or concurrent futures
+
+Scan multiple symbols in parallel
+
+Be optimized for speed and low latency
+
+Handle API rate limits safely
+
+Provide progress logging
+
+Goal: scan complete F&O universe within seconds.
+
+
 =====================
 EMAIL ALERT SYSTEM
 ==================
@@ -267,7 +324,27 @@ Score:
 FINAL RESULT
 ============
 
-The system must deliver:
+Output Requirements
+
+Return structured output:
+
+Symbol
+
+Direction (BUY / SELL)
+
+Score
+
+Timeframe confirmations
+
+OI status
+
+Entry price
+
+Stop loss suggestion
+
+Timestamp
+
+The system must deliver and Create a professional UI with::
 
 • Live F&O scanner
 • 6-month historical signals
@@ -276,4 +353,16 @@ The system must deliver:
 • Streamlit dashboard with OI visualization
 • Email alerts with OI details
 • Production-ready modular code
+OI extraction engine
+Fast multiprocessing scanner
+Create a professional UI with:
+
+1. Live Signals Table
+2. Historical Signals Table (6 months)
+3. OI Details Table
+4. Futures Buildup Summary
+5. Signal Strength Indicator
+6. Last Scan Time
+7. Manual Scan Button
+8. Auto Refresh
 
