@@ -1,0 +1,279 @@
+You are a professional quantitative trading system developer and expert in price action technical analyst.
+
+Build a complete F&O stock scanning system using API-based market data, derivatives OI data, and a multi-timeframe Bollinger Band strategy.
+
+The system must support:
+
+• Live scanning
+• Historical scanning (last 6 months)
+• Streamlit dashboard
+• Email alerts with OI details
+• Futures buildup confirmation
+• Options OI percentage change visualization
+
+Do NOT hardcode any stock symbols. Fetch only F&O instruments dynamically from the API.
+
+=====================
+AUTHENTICATION
+==============
+
+Use API Key and Access Token for authentication.
+
+Load credentials securely from environment variables.
+
+# ================= CONFIG =================
+
+API_KEY = "z9rful06a9890v8m"
+ACCESS_TOKEN = "VMNx0TpO2y0SGvu6iz3L6jBhi0kziF9V"
+
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 465
+EMAIL_FROM = "sambhajimene@gmail.com"
+EMAIL_PASSWORD = "jgebigpsoeqqwrfa"
+EMAIL_TO = ["sambhajimene@gmail.com"]
+
+=====================
+TIMEFRAMES
+==========
+
+Tide → Weekly
+Wave → Daily
+Ripple → Hourly (Trigger timeframe)
+
+Hourly timeframe generates final signals.
+
+=====================
+BULLISH SETUP — BB BUY
+======================
+
+The probability improves as more conditions are satisfied.
+
+WEEKLY (TIDE)
+
+• Bollinger Band challenged on upside
+(Price touches or closes near upper band)
+
+• RSI > 60
+
+DAILY (WAVE)
+
+• Bollinger Band challenged on upside
+
+• RSI > 60
+
+HOURLY (RIPPLE) — Trigger Conditions
+
+All must be satisfied:
+
+1. Lower Bollinger Band downside challenge failed 
+
+2. Heikin Ashi colour change from Red to Green
+
+3. RSI > 40
+   (Best when crossing above 60)
+
+OPTIONS OI CONFIRMATION (BULLISH)
+
+Use nearest expiry options.
+
+Conditions:
+
+• ITM CE OI decreasing → Short covering
+• ATM CE OI decreasing → Short covering
+• ATM PE OI increasing → Short buildup
+
+FUTURES CONFIRMATION
+
+• Price increasing AND OI increasing → Long buildup
+
+If aligned → Strong Bullish confirmation.
+
+Generate:
+
+BB BUY Signal
+
+=====================
+BEARISH SETUP — BB SELL
+=======================
+
+WEEKLY (TIDE)
+
+• Bollinger Band challenged on downside
+
+• RSI < 40
+
+DAILY (WAVE)
+
+• Bollinger Band challenged on downside
+
+• RSI < 40
+
+HOURLY (RIPPLE)
+
+All must be satisfied:
+
+1. Upper Bollinger Band upside challenge failed
+   
+
+2. Heikin Ashi colour change from Green to Red
+
+3. RSI < 60
+   (Best when crossing below 40)
+
+OPTIONS OI CONFIRMATION (BEARISH)
+
+• ITM PE OI decreasing → Short covering
+• ATM PE OI decreasing → Short covering
+• ATM CE OI increasing → Short buildup
+
+FUTURES CONFIRMATION
+
+• Price decreasing AND OI increasing → Short buildup
+
+Generate:
+
+BB SELL Signal
+
+=====================
+INDICATORS
+==========
+
+Bollinger Bands:
+
+• Period = 20
+• Standard deviation = 2
+
+RSI:
+
+• Period = 14
+
+Heikin Ashi candles for colour detection.
+
+=====================
+OPTIONS DATA REQUIREMENT
+========================
+
+For each signal, capture:
+
+• ATM strike price
+• ITM strike price
+• CE OI change (%)
+• PE OI change (%)
+• OI absolute change
+• Futures OI change (%)
+• Futures buildup type (Long / Short / Short Covering / Long Unwinding)
+
+Calculate OI percentage change:
+
+OI % Change = (Current OI − Previous OI) / Previous OI × 100
+
+=====================
+HISTORICAL DATA
+===============
+
+The scanner must:
+
+• Process last 6 months historical data
+• Evaluate hourly candles sequentially
+• Align weekly and daily conditions with hourly timestamps
+• Store every signal with exact date and time
+
+=====================
+OUTPUT REQUIREMENTS
+===================
+
+For every signal store:
+
+• Symbol
+• Signal Type (BB BUY / BB SELL)
+• Date
+• Time
+• Timestamp
+• ATM Strike
+• ITM Strike
+• CE OI Change %
+• PE OI Change %
+• Futures OI Change %
+• Futures Buildup Type
+• Confirmation Strength
+
+Avoid duplicate signals on same candle.
+
+=====================
+STREAMLIT DASHBOARD
+===================
+
+Create a professional UI with:
+
+1. Live Signals Table
+2. Historical Signals Table (6 months)
+3. OI Details Table
+4. Futures Buildup Summary
+5. Signal Strength Indicator
+6. Last Scan Time
+7. Manual Scan Button
+8. Auto Refresh
+
+Display OI percentage changes clearly in the dashboard.
+
+=====================
+EMAIL ALERT SYSTEM
+==================
+
+When a new signal occurs, send email alert containing:
+
+• Symbol
+• Signal Type
+• Date & Time
+• ATM Strike
+• ITM Strike
+• CE OI Change %
+• PE OI Change %
+• Futures OI Change %
+• Futures Buildup Type
+• Confirmation Strength
+
+Use secure SMTP connection.
+
+=====================
+EXECUTION RULES
+===============
+
+• Scan only F&O stocks
+• No symbol hardcoding
+• Handle API rate limits
+• Modular architecture
+• Error handling
+• Efficient performance
+
+=====================
+OPTIONAL — CONFIDENCE SCORE
+===========================
+
+Weekly alignment = 1
+Daily alignment = 1
+Hourly trigger = 1
+Options OI confirmation = 1
+Futures buildup confirmation = 1
+
+Score:
+
+5 → Very Strong
+4 → Strong
+3 → Moderate
+≤2 → Weak
+
+=====================
+FINAL RESULT
+============
+
+The system must deliver:
+
+• Live F&O scanner
+• 6-month historical signals
+• Accurate date/time output
+• Options OI + Futures analysis
+• Streamlit dashboard with OI visualization
+• Email alerts with OI details
+• Production-ready modular code
+
