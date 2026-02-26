@@ -1,0 +1,175 @@
+# ================================
+# OLLAMA PVC
+# ================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+
+---
+# ================================
+# OLLAMA DEPLOYMENT
+# ================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  labels:
+    app: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          ports:
+            - containerPort: 11434
+
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0"
+            - name: HOME
+              value: "/tmp"
+            - name: OLLAMA_MODELS
+              value: "/models"
+
+          resources:
+            requests:
+              cpu: "2"
+              memory: "10Gi"
+            limits:
+              cpu: "2"
+              memory: "12Gi"
+
+          volumeMounts:
+            - name: ollama-storage
+              mountPath: /models
+
+      volumes:
+        - name: ollama-storage
+          persistentVolumeClaim:
+            claimName: ollama-pvc
+
+---
+# ================================
+# OLLAMA SERVICE
+# ================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+spec:
+  selector:
+    app: ollama
+  ports:
+    - port: 11434
+      targetPort: 11434
+
+---
+# ================================
+# OPENWEBUI PVC
+# ================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openwebui-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# ================================
+# OPENWEBUI DEPLOYMENT
+# ================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openwebui
+  labels:
+    app: openwebui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openwebui
+  template:
+    metadata:
+      labels:
+        app: openwebui
+    spec:
+      containers:
+        - name: openwebui
+          image: ghcr.io/open-webui/open-webui:main
+          ports:
+            - containerPort: 8080
+
+          env:
+            - name: OLLAMA_BASE_URL
+              value: "http://ollama:11434"
+            - name: WEBUI_SECRET_KEY
+              value: "sambhaji-secret-key"
+            - name: HOME
+              value: "/tmp"
+
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+
+          volumeMounts:
+            - name: openwebui-storage
+              mountPath: /app/backend/data
+
+      volumes:
+        - name: openwebui-storage
+          persistentVolumeClaim:
+            claimName: openwebui-pvc
+
+---
+# ================================
+# OPENWEBUI SERVICE
+# ================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: openwebui
+spec:
+  selector:
+    app: openwebui
+  ports:
+    - port: 80
+      targetPort: 8080
+
+---
+# ================================
+# OPENWEBUI ROUTE
+# ================================
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: openwebui
+spec:
+  to:
+    kind: Service
+    name: openwebui
+  port:
+    targetPort: 80
